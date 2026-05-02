@@ -299,13 +299,8 @@ function setupDrop(){
   document.querySelectorAll('[data-trigger]').forEach(function(el){
     el.addEventListener('click', function(){ document.getElementById(el.dataset.trigger).click(); });
   });
-  // Edit mode buttons
-  var be;
-  if(be=document.getElementById('btnEdit')) be.addEventListener('click', toggleEdit);
-  if(be=document.getElementById('btnDocx')) be.addEventListener('click', exportDocx);
-  if(be=document.getElementById('btnPptx')) be.addEventListener('click', exportPptx);
-
-  // 편집 모드: 별점 클릭
+  // Step navigation
+  var b;
   document.querySelectorAll('.estr').forEach(function(el){
     el.addEventListener('click', function(){
       updateQ(parseInt(el.dataset.qi), 'difficulty', parseInt(el.dataset.v));
@@ -581,9 +576,9 @@ function toggleTag(hi, tag){
   saveState(); render();
 }
 function updateSummary(val){ if(S.result){ S.result.summary=val; saveState(); } }
-function deleteHighlight(hi){
+function deleteHighlight(no){
   if(!S.result||!S.result.highlights) return;
-  S.result.highlights.splice(hi,1);
+  S.result.highlights = S.result.highlights.filter(function(h){ return h.no !== no; });
   saveState(); render();
 }
 
@@ -653,7 +648,7 @@ function step4Html(){
           +'</div>';
       }
       return '<div class="hlcard '+cls+'" style="position:relative">'
-        +'<button onclick="deleteHighlight('+hi+')" style="position:absolute;top:10px;right:10px;background:transparent;border:1px solid #e0ddd6;border-radius:50%;width:22px;height:22px;font-size:12px;color:#8a8680;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0" onmouseover="this.style.background=\'#fdf0ee\';this.style.color=\'#b03020\';this.style.borderColor=\'#f0c0b8\'" onmouseout="this.style.background=\'transparent\';this.style.color=\'#8a8680\';this.style.borderColor=\'#e0ddd6\'">✕</button>'
+        +'<button onclick="deleteHighlight('+h.no+')" style="position:absolute;top:10px;right:10px;background:transparent;border:1px solid #e0ddd6;border-radius:50%;width:22px;height:22px;font-size:12px;color:#8a8680;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0" onmouseover="this.style.background=\'#fdf0ee\';this.style.color=\'#b03020\';this.style.borderColor=\'#f0c0b8\'" onmouseout="this.style.background=\'transparent\';this.style.color=\'#8a8680\';this.style.borderColor=\'#e0ddd6\'">✕</button>'
         +'<div class="hlhd"><span class="hlno">'+h.no+'번</span>'
         +(q?typePill(q.type):'')+' '
         +tags.map(tagBadge).join('')
@@ -668,7 +663,7 @@ function step4Html(){
       return '<span data-hi="'+hi+'" data-tag="'+t+'" class="etag" style="cursor:pointer;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid '+(on?'transparent':'#c8c4ba')+';background:'+(on?({'고난도':'#fdf0ee','고변형':'#fef8ed','함정':'#e8ecf5'}[t]):'')+';color:'+(on?({'고난도':'#b03020','고변형':'#a06010','함정':'#1a3360'}[t]):'#8a8680')+';margin-right:4px">'+t+'</span>';
     }).join('');
     return '<div class="hlcard" style="background:#fffef5;position:relative">'
-      +'<button onclick="deleteHighlight('+hi+')" style="position:absolute;top:10px;right:10px;background:transparent;border:1px solid #e0ddd6;border-radius:50%;width:22px;height:22px;font-size:12px;color:#8a8680;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0" onmouseover="this.style.background=\'#fdf0ee\';this.style.color=\'#b03020\'" onmouseout="this.style.background=\'transparent\';this.style.color=\'#8a8680\'">✕</button>'
+      +'<button onclick="deleteHighlight('+h.no+')" style="position:absolute;top:10px;right:10px;background:transparent;border:1px solid #e0ddd6;border-radius:50%;width:22px;height:22px;font-size:12px;color:#8a8680;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0" onmouseover="this.style.background=\'#fdf0ee\';this.style.color=\'#b03020\'" onmouseout="this.style.background=\'transparent\';this.style.color=\'#8a8680\'">✕</button>'
       +'<div class="hlhd"><span class="hlno">'+h.no+'번</span>'
       +(q?typePill(q.type):'')+' '
       +tagToggles
@@ -697,11 +692,11 @@ function step4Html(){
     +'<div><div class="rttl">'+esc(S.info.school)+' 내신 분석 리포트</div>'
     +'<div class="rmeta">'+S.info.year+'년 · '+S.info.grade+'학년 · '+S.info.semester+' '+S.info.exam+' · 총 '+(r.total_questions||qs.length)+'문항</div></div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap" class="no-print">'
-    +'<button class="btn '+(em?'btn-gold':'btn-ghost')+'" id="btnEdit">'+(em?'✅ 편집 완료':'✏️ 직접 수정')+'</button>'
-    +'<button class="btn btn-navy" id="btnExport">보고서 내보내기 (HTML)</button>'
-    +'<button class="btn btn-ghost" id="btnDocx">📝 Word 저장</button>'
-    +'<button class="btn btn-ghost" id="btnPptx">📊 PPT 저장</button>'
-    +'<button class="btn btn-ghost" id="btnReset">새 분석 시작</button>'
+    +'<button class="btn '+(em?'btn-gold':'btn-ghost')+'" onclick="toggleEdit()">'+(em?'✅ 편집 완료':'✏️ 직접 수정')+'</button>'
+    +'<button class="btn btn-navy" onclick="exportReport()">보고서 내보내기 (HTML)</button>'
+    +'<button class="btn btn-ghost" onclick="exportDocx()">📝 Word 저장</button>'
+    +'<button class="btn btn-ghost" onclick="exportPptx()">📊 PPT 저장</button>'
+    +'<button class="btn btn-ghost" onclick="resetAll()">새 분석 시작</button>'
     +'</div></div>'
     +editNotice
     +'<div class="sgrid">'
