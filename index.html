@@ -574,9 +574,12 @@ function updateQ(i, field, val){
   if(!S.result||!S.result.questions) return;
   S.result.questions[i][field] = field==='difficulty'||field==='mod_pct' ? parseInt(val)||0 : val;
   if(field==='mod_pct') S.result.questions[i].mod_level = pctToLevel(val);
+  if(field==='mod_level'){
+    var pctMap={'원문동일':0,'소변형':30,'중변형':55,'고변형':80,'판단불가':null};
+    S.result.questions[i].mod_pct = pctMap[val] !== undefined ? pctMap[val] : S.result.questions[i].mod_pct;
+  }
   saveState();
-  // 별점만 즉시 재렌더, 나머지는 포커스 잃을 때 처리
-  if(field==='difficulty') render();
+  if(field==='difficulty'||field==='mod_level') render();
 }
 function updateHL(i, field, val){
   if(!S.result||!S.result.highlights) return;
@@ -638,7 +641,9 @@ function step4Html(){
       +'<td style="white-space:nowrap;min-width:120px">'
         +'<input type="range" data-qi="'+i+'" data-f="mod_pct" value="'+(q.mod_pct||0)+'" min="0" max="100" step="10" style="width:90px;vertical-align:middle;cursor:pointer"/>'
         +'<input type="number" data-qi="'+i+'" data-f="mod_pct" value="'+(q.mod_pct||0)+'" min="0" max="100" style="width:42px;border:1px solid #c8c4ba;border-radius:4px;padding:3px 5px;font-size:12px;text-align:center;margin-left:4px"/><span style="font-size:12px">%</span>'
-        +'<br><span class="badge '+(({'원문동일':'bg','소변형':'bb','중변형':'by','고변형':'br','판단불가':'bn'})[pctToLevel(q.mod_pct)]||'bb')+'" style="font-size:10px;padding:1px 7px;margin-top:3px;display:inline-block">'+pctToLevel(q.mod_pct)+'</span>'
+        +'<br><select data-qi="'+i+'" data-f="mod_level" style="margin-top:4px;font-size:11px;padding:2px 6px;border-radius:20px;border:1px solid #c8c4ba;cursor:pointer;font-family:\'Noto Sans KR\',sans-serif;background:'+(({'원문동일':'#edf7f0','소변형':'#eef4fd','중변형':'#fef8ed','고변형':'#fdf0ee','판단불가':'#e8ecf5'})[pctToLevel(q.mod_pct)]||'#eef4fd')+';color:'+(({'원문동일':'#1f7a45','소변형':'#1a4fa0','중변형':'#a06010','고변형':'#b03020','판단불가':'#1a3360'})[pctToLevel(q.mod_pct)]||'#1a4fa0')+'">'
+        +['원문동일','소변형','중변형','고변형','판단불가'].map(function(lv){ return '<option value="'+lv+'"'+(pctToLevel(q.mod_pct)===lv?' selected':'')+'>'+lv+'</option>'; }).join('')
+        +'</select>'
       +'</td>'
       +'<td><input type="text" data-qi="'+i+'" data-f="notable" value="'+esc(q.notable||'')+'" '+inp+'/></td>'
       +'</tr>';
