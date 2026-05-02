@@ -306,10 +306,18 @@ function setupDrop(){
       updateQ(parseInt(el.dataset.qi), 'difficulty', parseInt(el.dataset.v));
     });
   });
-  // 편집 모드: select/input 변경
+  // 편집 모드: select/input/range 변경
   document.querySelectorAll('[data-qi][data-f]').forEach(function(el){
-    el.addEventListener('change', function(){ updateQ(parseInt(el.dataset.qi), el.dataset.f, el.value); });
-    el.addEventListener('blur',   function(){ updateQ(parseInt(el.dataset.qi), el.dataset.f, el.value); });
+    var handler = function(){
+      var qi = parseInt(el.dataset.qi), f = el.dataset.f, val = el.value;
+      // range와 number가 같은 data-qi+data-f를 공유 → 동기화
+      if(f === 'mod_pct'){
+        document.querySelectorAll('[data-qi="'+qi+'"][data-f="mod_pct"]').forEach(function(peer){ peer.value = val; });
+      }
+      updateQ(qi, f, val);
+    };
+    el.addEventListener('change', handler);
+    el.addEventListener('input', handler);
   });
   // 편집 모드: 하이라이트 textarea
   document.querySelectorAll('[data-hi][data-f]').forEach(function(el){
@@ -485,8 +493,8 @@ var SYS = '당신은 한국 고등학교 영어 내신시험 전문 분석가입
   +'      "type": "유형명",\n'
   +'      "source": "출처. PDF에서 해당 지문을 찾지 못하면 반드시 판단불가",\n'
   +'      "difficulty": "number 1~5. 아래 기준 엄격 적용",\n'
-  +'      "mod_pct": "number 0~100. source=판단불가이면 null",\n'
-  +'      "mod_level": "원문동일|소변형|중변형|고변형|판단불가",\n'
+  +'      "mod_pct": "number 0~100. source=판단불가이면 null. 어법(선택)·어법(서술)은 지문 문장 자체의 변형만 측정(선택지 변형 제외)",\n'
+  +'      "mod_level": "mod_pct 값으로 자동결정 — Claude가 별도 판단 금지: 0~15=원문동일, 16~40=소변형, 41~65=중변형, 66~100=고변형, null=판단불가",\n'
   +'      "notable": "출제 포인트. source=판단불가이면: 원본 지문을 PDF에서 확인할 수 없어 변형 분석 불가"\n'
   +'    }\n'
   +'  ],\n'
@@ -536,6 +544,13 @@ async function runAnalysis(){
     if(data.error) throw new Error(data.error.message);
     var txt = (data.content||[]).map(function(b){ return b.text||''; }).join('');
     S.result = JSON.parse(txt.replace(/```json|```/g,'').trim());
+    // mod_level을 mod_pct 기준으로 강제 재계산 (Claude의 독자 판단 무효화)
+    if(S.result.questions){
+      S.result.questions.forEach(function(q){
+        if(q.mod_pct === null || q.mod_pct === undefined) q.mod_level = '판단불가';
+        else q.mod_level = pctToLevel(q.mod_pct);
+      });
+    }
     S.step=4;
     saveHistory(); // 분석 기록 저장
   } catch(e){
@@ -620,9 +635,10 @@ function step4Html(){
       +'<td><select data-qi="'+i+'" data-f="type" '+inp.replace('style="','style="appearance:none;')+'>'+tOpts+'</select></td>'
       +'<td><input type="text" data-qi="'+i+'" data-f="source" value="'+esc(q.source||'')+'" '+inp+'/></td>'
       +'<td><span style="display:inline-flex;gap:2px">'+starEdit+'</span></td>'
-      +'<td style="white-space:nowrap">'
-        +'<input type="number" data-qi="'+i+'" data-f="mod_pct" value="'+q.mod_pct+'" min="0" max="100" style="width:52px;border:1px solid #c8c4ba;border-radius:4px;padding:4px 6px;font-size:12px;text-align:center"/> %'
-        +'<br><span style="font-size:11px;color:#8a8680">→ '+pctToLevel(q.mod_pct)+'</span>'
+      +'<td style="white-space:nowrap;min-width:120px">'
+        +'<input type="range" data-qi="'+i+'" data-f="mod_pct" value="'+(q.mod_pct||0)+'" min="0" max="100" step="10" style="width:90px;vertical-align:middle;cursor:pointer"/>'
+        +'<input type="number" data-qi="'+i+'" data-f="mod_pct" value="'+(q.mod_pct||0)+'" min="0" max="100" style="width:42px;border:1px solid #c8c4ba;border-radius:4px;padding:3px 5px;font-size:12px;text-align:center;margin-left:4px"/><span style="font-size:12px">%</span>'
+        +'<br><span class="badge '+(({'원문동일':'bg','소변형':'bb','중변형':'by','고변형':'br','판단불가':'bn'})[pctToLevel(q.mod_pct)]||'bb')+'" style="font-size:10px;padding:1px 7px;margin-top:3px;display:inline-block">'+pctToLevel(q.mod_pct)+'</span>'
       +'</td>'
       +'<td><input type="text" data-qi="'+i+'" data-f="notable" value="'+esc(q.notable||'')+'" '+inp+'/></td>'
       +'</tr>';
