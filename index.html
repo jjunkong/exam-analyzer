@@ -5,8 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>내신시험 분석기 | KKJ ENGLISH</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Noto Sans KR',sans-serif;background:#f2f0ec;color:#1a1a1a;min-height:100vh;font-size:14px;line-height:1.6}
@@ -697,9 +695,24 @@ function step4Html(){
     +'</div>';
 }
 
+// ── LAZY LIBRARY LOADER ──────────────────────
+function loadScript(src, globalKey){
+  return new Promise(function(res, rej){
+    if(window[globalKey]){ res(); return; }
+    var s=document.createElement('script');
+    s.src=src;
+    s.onload=function(){ res(); };
+    s.onerror=function(){ rej(new Error(globalKey+' 로딩 실패')); };
+    document.head.appendChild(s);
+  });
+}
+
 // ── EXPORT DOCX ──────────────────────────────
 async function exportDocx(){
-  if(!window.docx){ alert('docx 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return; }
+  try{
+    await loadScript('https://unpkg.com/docx@7.8.2/build/index.umd.js','docx');
+  }catch(e){ alert('Word 라이브러리 로딩에 실패했습니다.\n인터넷 연결을 확인 후 다시 시도해주세요.'); return; }
+  if(!window.docx){ alert('Word 라이브러리를 불러올 수 없습니다.'); return; }
   var r=S.result, qs=r.questions||[], inf=S.info;
   var D=window.docx;
   var navy='0E1F3D', gold='C9933A', gray='8A8680', lightgray='F8F7F4', border={style:D.BorderStyle.SINGLE,size:4,color:'E0DDD6'};
@@ -817,7 +830,14 @@ async function exportDocx(){
 
 // ── EXPORT PPTX ──────────────────────────────
 function exportPptx(){
-  if(typeof PptxGenJS==='undefined'){ alert('PptxGenJS 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return; }
+  loadScript('https://unpkg.com/pptxgenjs@3.12.0/dist/pptxgen.bundle.js','PptxGenJS')
+  .then(function(){
+    if(typeof PptxGenJS==='undefined'){ alert('PPT 라이브러리를 불러올 수 없습니다.'); return; }
+    runPptx();
+  })
+  .catch(function(){ alert('PPT 라이브러리 로딩에 실패했습니다.\n인터넷 연결을 확인 후 다시 시도해주세요.'); });
+}
+function runPptx(){
   var r=S.result, qs=r.questions||[], inf=S.info;
   var pptx=new PptxGenJS();
   pptx.layout='LAYOUT_WIDE';
@@ -917,7 +937,7 @@ function exportPptx(){
   ss.addText(r.summary||'',{x:0.6,y:1.0,w:12.1,h:3.9,fontSize:13,color:'4A4844',fontFace:'Noto Sans KR',valign:'top'});
 
   pptx.writeFile({fileName:inf.school+'_내신분석.pptx'});
-}
+}  // runPptx end
 
 
 function exportReport(){
