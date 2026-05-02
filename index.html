@@ -488,7 +488,13 @@ var SYS = '당신은 한국 고등학교 영어 내신시험 전문 분석가입
   +'    }\n'
   +'  ],\n'
   +'  "highlights": [\n'
-  +'    { "no": number, "tags": ["고난도","고변형","함정" 중 해당], "comment": "2~4문장" }\n'
+  +'    {\n'
+  +'      "no": number,\n'
+  +'      "tags": ["고난도","고변형","함정" 중 해당],\n'
+  +'      "comment": "2~4문장",\n'
+  +'      "original_excerpt": "원본 지문에서 해당 부분의 핵심 문장 1~3개 (변형이 있는 경우에만, 없으면 null)",\n'
+  +'      "exam_excerpt": "시험지에서 실제 출제된 해당 부분의 핵심 문장 1~3개 (변형이 있는 경우에만, 없으면 null)"\n'
+  +'    }\n'
   +'  ],\n'
   +'  "summary": "총평 3~5문장. 반드시 첫 문장에 출처별 문항 수를 구체적으로 명시할 것. 예: \'교과서 1과 3문항, 2과 4문항, 3과 2문항, 26년 3월 모의 2문항, 부교재 리딩파워 1강 3문항으로 구성되었다.\' 처럼 각 출처를 개별적으로 분리하여 숫자로 표기. 이후 문장에서 난이도 분포(고난도 몇 문항), 변형 출제 경향, 주요 출제 포인트를 서술."\n'
   +'}\n\n'
@@ -611,12 +617,26 @@ function step4Html(){
     var cls = h.tags&&h.tags.includes('고난도') ? 'red' : 'amber';
     var tags = h.tags||[];
     if(!em){
+      var excerptHtml = '';
+      if(h.original_excerpt || h.exam_excerpt){
+        excerptHtml = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">'
+          +'<div style="background:#f5f4f0;border:1px solid #e0ddd6;border-radius:6px;padding:10px 13px">'
+          +'<div style="font-size:10px;font-weight:600;color:#8a8680;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📄 원문</div>'
+          +'<div style="font-size:12px;color:#4a4844;line-height:1.7;font-style:italic">'+esc(h.original_excerpt||'—')+'</div>'
+          +'</div>'
+          +'<div style="background:#fdf6e8;border:1px solid #e8d5a0;border-radius:6px;padding:10px 13px">'
+          +'<div style="font-size:10px;font-weight:600;color:#a06010;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px">📝 출제문</div>'
+          +'<div style="font-size:12px;color:#4a4844;line-height:1.7;font-style:italic">'+esc(h.exam_excerpt||'—')+'</div>'
+          +'</div>'
+          +'</div>';
+      }
       return '<div class="hlcard '+cls+'">'
         +'<div class="hlhd"><span class="hlno">'+h.no+'번</span>'
         +(q?typePill(q.type):'')+' '
         +tags.map(tagBadge).join('')
         +'</div>'
         +'<div class="hlbody">'+esc(h.comment)+'</div>'
+        +excerptHtml
         +'</div>';
     }
     // 편집 모드 하이라이트
@@ -630,7 +650,13 @@ function step4Html(){
       +tagToggles
       +'<span style="font-size:11px;color:#8a8680;margin-left:4px">클릭으로 태그 토글</span>'
       +'</div>'
-      +'<textarea data-hi="'+hi+'" data-f="comment" rows="3" style="width:100%;border:1px solid #c8c4ba;border-radius:6px;padding:8px 10px;font-family:\'Noto Sans KR\',sans-serif;font-size:13px;resize:vertical;color:#4a4844;line-height:1.7">'+esc(h.comment)+'</textarea>'
+      +'<textarea data-hi="'+hi+'" data-f="comment" rows="3" style="width:100%;border:1px solid #c8c4ba;border-radius:6px;padding:8px 10px;font-family:\'Noto Sans KR\',sans-serif;font-size:13px;resize:vertical;color:#4a4844;line-height:1.7;margin-bottom:8px">'+esc(h.comment)+'</textarea>'
+      +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      +'<div><div style="font-size:11px;font-weight:500;color:#8a8680;margin-bottom:4px">📄 원문 발췌</div>'
+      +'<textarea data-hi="'+hi+'" data-f="original_excerpt" rows="3" style="width:100%;border:1px solid #c8c4ba;border-radius:6px;padding:8px 10px;font-family:\'Noto Sans KR\',sans-serif;font-size:12px;resize:vertical;color:#4a4844;line-height:1.6;font-style:italic">'+esc(h.original_excerpt||'')+'</textarea></div>'
+      +'<div><div style="font-size:11px;font-weight:500;color:#a06010;margin-bottom:4px">📝 출제문 발췌</div>'
+      +'<textarea data-hi="'+hi+'" data-f="exam_excerpt" rows="3" style="width:100%;border:1px solid #e8d5a0;border-radius:6px;padding:8px 10px;font-family:\'Noto Sans KR\',sans-serif;font-size:12px;resize:vertical;color:#4a4844;line-height:1.6;font-style:italic;background:#fffef0">'+esc(h.exam_excerpt||'')+'</textarea></div>'
+      +'</div>'
       +'</div>';
   }).join('');
 
@@ -723,9 +749,31 @@ async function exportDocx(){
       ]
     }));
     hlParas.push(new D.Paragraph({
-      spacing:{before:0,after:200},
+      spacing:{before:0,after:80},
       children:[new D.TextRun({text:h.comment||'',size:18,font:'Noto Sans KR',color:'4A4844'})]
     }));
+    if(h.original_excerpt || h.exam_excerpt){
+      var compRows=[
+        new D.TableRow({children:[
+          new D.TableCell({borders:borders,shading:{fill:'F5F4F0',type:D.ShadingType.SOLID,color:'F5F4F0'},children:[
+            new D.Paragraph({children:[new D.TextRun({text:'📄 원문',bold:true,size:16,color:gray,font:'Noto Sans KR'})]})
+          ]}),
+          new D.TableCell({borders:borders,shading:{fill:'FDF6E8',type:D.ShadingType.SOLID,color:'FDF6E8'},children:[
+            new D.Paragraph({children:[new D.TextRun({text:'📝 출제문',bold:true,size:16,color:'A06010',font:'Noto Sans KR'})]})
+          ]})
+        ]}),
+        new D.TableRow({children:[
+          new D.TableCell({borders:borders,children:[
+            new D.Paragraph({children:[new D.TextRun({text:h.original_excerpt||'—',size:17,italics:true,color:'4A4844',font:'Noto Sans KR'})]})
+          ]}),
+          new D.TableCell({borders:borders,children:[
+            new D.Paragraph({children:[new D.TextRun({text:h.exam_excerpt||'—',size:17,italics:true,color:'4A4844',font:'Noto Sans KR'})]})
+          ]})
+        ]})
+      ];
+      hlParas.push(new D.Table({width:{size:100,type:D.WidthType.PERCENTAGE},columnWidths:[5000,5000],rows:compRows}));
+    }
+    hlParas.push(new D.Paragraph({spacing:{before:0,after:160},children:[]}));
   });
 
   var doc=new D.Document({
@@ -829,9 +877,9 @@ function exportPptx(){
     s.addTable(rows,{x:0.3,y:0.85,w:12.7,colW:[0.55,1.0,1.7,0.8,1.15,7.5],border:{type:'solid',pt:0.5,color:'E0DDD6'},rowH:0.28});
   }
 
-  // ── 슬라이드 4+: 주요 문항 분석 (3개씩)
+  // ── 슬라이드 4+: 주요 문항 분석 (변형 비교 포함, 2개씩)
   var hls=r.highlights||[];
-  var HPAGE=3;
+  var HPAGE=2;
   for(var hp=0;hp<Math.ceil(hls.length/HPAGE);hp++){
     var hchunk=hls.slice(hp*HPAGE,(hp+1)*HPAGE);
     var hs=pptx.addSlide();
@@ -839,14 +887,24 @@ function exportPptx(){
     hs.addText('주요 문항 분석'+(Math.ceil(hls.length/HPAGE)>1?' ('+(hp+1)+'/'+Math.ceil(hls.length/HPAGE)+')':''),{x:0.4,y:0.1,w:12,h:0.5,fontSize:16,bold:true,color:'FFFFFF',fontFace:'Noto Sans KR'});
     hchunk.forEach(function(h,hi){
       var q=qs.find(function(x){return x.no===h.no;});
-      var y=0.85+hi*1.55;
+      var hasExcerpt=h.original_excerpt||h.exam_excerpt;
+      var cardH=hasExcerpt?2.3:1.35;
+      var y=0.85+hi*(cardH+0.18);
       var bc=h.tags&&h.tags.includes('고난도')?'B03020':GOLD;
-      hs.addShape(pptx.ShapeType.rect,{x:0.3,y:y,w:12.7,h:1.4,fill:{color:'FFFFFF'},line:{color:'E0DDD6',pt:1}});
-      hs.addShape(pptx.ShapeType.rect,{x:0.3,y:y,w:0.06,h:1.4,fill:{color:bc}});
-      hs.addText(h.no+'번',{x:0.5,y:y+0.08,w:0.7,h:0.35,fontSize:14,bold:true,color:NAVY,fontFace:'DM Mono'});
+      hs.addShape(pptx.ShapeType.rect,{x:0.3,y:y,w:12.7,h:cardH,fill:{color:'FFFFFF'},line:{color:'E0DDD6',pt:1}});
+      hs.addShape(pptx.ShapeType.rect,{x:0.3,y:y,w:0.07,h:cardH,fill:{color:bc}});
+      hs.addText(h.no+'번',{x:0.52,y:y+0.08,w:0.7,h:0.3,fontSize:13,bold:true,color:NAVY,fontFace:'DM Mono'});
       var tagTxt=(q?'['+q.type+']  ':'')+' '+(h.tags||[]).join(' · ');
-      hs.addText(tagTxt,{x:1.25,y:y+0.1,w:11,h:0.3,fontSize:10,color:'B03020',bold:true,fontFace:'Noto Sans KR'});
-      hs.addText(h.comment||'',{x:0.5,y:y+0.48,w:12.2,h:0.85,fontSize:10,color:'4A4844',fontFace:'Noto Sans KR',valign:'top'});
+      hs.addText(tagTxt,{x:1.26,y:y+0.1,w:11,h:0.26,fontSize:10,color:'B03020',bold:true,fontFace:'Noto Sans KR'});
+      hs.addText(h.comment||'',{x:0.52,y:y+0.42,w:12.2,h:0.55,fontSize:9.5,color:'4A4844',fontFace:'Noto Sans KR',valign:'top'});
+      if(hasExcerpt){
+        hs.addShape(pptx.ShapeType.rect,{x:0.5,y:y+1.05,w:5.9,h:1.1,fill:{color:'F5F4F0'},line:{color:'E0DDD6',pt:0.5}});
+        hs.addText('📄 원문',{x:0.6,y:y+1.08,w:5.7,h:0.22,fontSize:8.5,bold:true,color:GRAY,fontFace:'Noto Sans KR'});
+        hs.addText(h.original_excerpt||'—',{x:0.6,y:y+1.32,w:5.7,h:0.78,fontSize:9,color:'333333',fontFace:'Noto Sans KR',italic:true,valign:'top'});
+        hs.addShape(pptx.ShapeType.rect,{x:6.7,y:y+1.05,w:6.0,h:1.1,fill:{color:'FDF6E8'},line:{color:'E8D5A0',pt:0.5}});
+        hs.addText('📝 출제문',{x:6.8,y:y+1.08,w:5.8,h:0.22,fontSize:8.5,bold:true,color:'A06010',fontFace:'Noto Sans KR'});
+        hs.addText(h.exam_excerpt||'—',{x:6.8,y:y+1.32,w:5.8,h:0.78,fontSize:9,color:'333333',fontFace:'Noto Sans KR',italic:true,valign:'top'});
+      }
     });
   }
 
