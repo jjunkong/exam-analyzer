@@ -434,10 +434,14 @@ function step2Html(){
         +'<button class="fdel" data-i="'+i+'" type="button">삭제</button>'
         +'</div>';
     }).join('');
-    var addMore = S.pdfFiles.length < 5
-      ? '<label for="pdfInp" class="padd-lbl">+ PDF 추가 <span style="font-size:11px;opacity:.6">('+S.pdfFiles.length+'/5)</span></label>'
-      : '';
-    pdfSection = rows + addMore;
+    var dropMore = S.pdfFiles.length < 5
+      ? '<div class="uzone" id="pdfZone" style="padding:16px 20px;margin-top:8px">'
+        +'<div style="font-size:13px;font-weight:500;margin-bottom:4px">추가 PDF 드롭 또는</div>'
+        +'<div style="font-size:11px;opacity:.7;margin-bottom:8px">('+S.pdfFiles.length+'/5개 업로드됨)</div>'
+        +'<label for="pdfInp" style="display:inline-block;padding:6px 16px;background:#0e1f3d;color:#fff;border-radius:6px;font-size:12px;cursor:pointer">파일 선택</label>'
+        +'</div>'
+      : '<div style="font-size:12px;color:#8a8680;padding:8px 0">최대 5개 업로드 완료</div>';
+    pdfSection = rows + dropMore;
   }
 
   return '<div class="card">'
