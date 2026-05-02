@@ -1,0 +1,634 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>내신시험 분석기 | KKJ ENGLISH</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Noto Sans KR',sans-serif;background:#f2f0ec;color:#1a1a1a;min-height:100vh;font-size:14px;line-height:1.6}
+.hdr{background:#0e1f3d;height:58px;display:flex;align-items:center;padding:0 32px;gap:16px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.18)}
+.hdr-logo{font-size:13px;font-weight:700;color:#fff;letter-spacing:.08em;border-right:1px solid rgba(255,255,255,.2);padding-right:16px}
+.hdr-logo span{color:#e8b96a}
+.hdr-ttl{font-size:14px;color:rgba(255,255,255,.75)}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.dot{width:7px;height:7px;border-radius:50%;background:#4ad98a;display:inline-block}
+.dot.off{background:#888}
+#sTxt{color:rgba(255,255,255,.55);font-size:12px}
+.api-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:4px 14px;color:rgba(255,255,255,.8);font-size:12px;cursor:pointer;font-family:'Noto Sans KR',sans-serif}
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;display:flex;align-items:center;justify-content:center}
+.modal{background:#fff;border-radius:14px;padding:28px 32px;width:440px;max-width:90vw;box-shadow:0 8px 40px rgba(0,0,0,.22)}
+.modal h2{font-size:17px;font-weight:500;margin-bottom:8px}
+.modal p{font-size:13px;color:#4a4844;margin-bottom:20px;line-height:1.7}
+.modal-row{display:flex;gap:10px;justify-content:flex-end}
+.main{max-width:860px;margin:0 auto;padding:36px 24px 60px}
+.stepbar{display:flex;align-items:center;margin-bottom:32px;background:#fff;border-radius:14px;padding:16px 24px;box-shadow:0 1px 6px rgba(14,31,61,.07);border:1px solid #e0ddd6}
+.si{display:flex;align-items:center;gap:10px;flex:1}
+.snum{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:500;flex-shrink:0}
+.snum.off{background:#f2f0ec;color:#8a8680;border:1px solid #e0ddd6}
+.snum.on{background:#0e1f3d;color:#fff}
+.snum.done{background:#c9933a;color:#fff;font-size:11px}
+.slbl{font-size:13px}
+.slbl.off{color:#8a8680}
+.slbl.on{color:#1a1a1a;font-weight:500}
+.slbl.done{color:#4a4844}
+.sconn{height:1px;background:#e0ddd6;flex:.4;margin:0 4px}
+.card{background:#fff;border-radius:14px;border:1px solid #e0ddd6;padding:28px 32px;box-shadow:0 1px 6px rgba(14,31,61,.07);margin-bottom:20px;animation:up .3s ease}
+@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.card-ttl{font-size:18px;font-weight:500;margin-bottom:6px;letter-spacing:-.3px}
+.card-sub{font-size:13px;color:#8a8680;margin-bottom:24px}
+.flbl{display:block;font-size:12px;font-weight:500;color:#4a4844;letter-spacing:.04em;text-transform:uppercase;margin-bottom:7px}
+.fld{margin-bottom:20px}
+input[type=text],input[type=password],select{width:100%;padding:10px 14px;border:1px solid #c8c4ba;border-radius:6px;font-family:'Noto Sans KR',sans-serif;font-size:14px;color:#1a1a1a;background:#fff;outline:none;transition:border-color .15s,box-shadow .15s;appearance:none}
+input:focus,select:focus{border-color:#2a4a8a;box-shadow:0 0 0 3px rgba(42,74,138,.12)}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 12px center;padding-right:32px;cursor:pointer}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.btn{padding:10px 20px;border-radius:6px;font-family:'Noto Sans KR',sans-serif;font-size:14px;font-weight:500;cursor:pointer;transition:all .15s;border:1px solid transparent;display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.4;cursor:not-allowed;transform:none}
+.btn-navy{background:#0e1f3d;color:#fff;border-color:#0e1f3d}
+.btn-navy:hover{background:#1a3360}
+.btn-gold{background:#c9933a;color:#fff;border-color:#c9933a}
+.btn-gold:hover{background:#b07c28}
+.btn-ghost{background:transparent;color:#4a4844;border-color:#c8c4ba}
+.btn-ghost:hover{background:#f2f0ec}
+.btn-row{display:flex;gap:10px;margin-top:24px}
+.uzone{border:1.5px dashed #c8c4ba;border-radius:10px;padding:28px 20px;text-align:center;cursor:pointer;background:#f8f7f4;color:#8a8680;transition:all .15s;display:block;user-select:none}
+.uzone:hover,.uzone.over{border-color:#2a4a8a;background:#eef4fd;color:#1a4fa0}
+.uzone .ico{font-size:28px;margin-bottom:8px}
+.uzone .utxt{font-size:14px;font-weight:500;margin-bottom:4px}
+.uzone .uhint{font-size:12px;opacity:.7}
+.tgrid{display:flex;gap:10px;flex-wrap:wrap;padding:4px 0}
+.twrap{position:relative;flex-shrink:0}
+.timg{width:80px;height:100px;object-fit:cover;border-radius:6px;border:1px solid #c8c4ba;display:block}
+.tlbl{font-size:11px;color:#8a8680;text-align:center;margin-top:4px;font-family:'DM Mono',monospace}
+.tdel{position:absolute;top:-7px;right:-7px;width:20px;height:20px;border-radius:50%;background:#b03020;color:#fff;border:none;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center}
+.tadd-lbl{width:80px;height:100px;border-radius:6px;border:1.5px dashed #c8c4ba;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:22px;color:#8a8680;background:#f8f7f4;transition:all .15s}
+.tadd-lbl:hover{border-color:#2a4a8a;color:#0e1f3d;background:#eef4fd}
+.frow{display:flex;align-items:center;gap:14px;background:#f8f7f4;border:1px solid #e0ddd6;border-radius:10px;padding:14px 18px;margin-bottom:8px}
+.fico{width:40px;height:48px;border-radius:6px;background:#fdf0ee;border:1px solid #f0c0b8;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#b03020;flex-shrink:0}
+.finf{flex:1;min-width:0}
+.fname{font-size:14px;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fsize{font-size:12px;color:#8a8680;margin-top:2px;font-family:'DM Mono',monospace}
+.fdel{background:transparent;border:1px solid #c8c4ba;border-radius:6px;padding:6px 12px;font-size:12px;color:#8a8680;cursor:pointer;font-family:'Noto Sans KR',sans-serif;transition:all .15s}
+.fdel:hover{background:#fdf0ee;color:#b03020;border-color:#f0c0b8}
+.padd-lbl{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;border:1px dashed #c8c4ba;border-radius:6px;font-size:13px;color:#8a8680;cursor:pointer;background:#f8f7f4;transition:all .15s;font-family:'Noto Sans KR',sans-serif;margin-top:4px}
+.padd-lbl:hover{border-color:#2a4a8a;color:#0e1f3d;background:#eef4fd}
+.cbox{background:#f8f7f4;border:1px solid #e0ddd6;border-radius:10px;padding:16px 20px;margin-bottom:20px}
+.cbox-ttl{font-weight:500;font-size:15px;margin-bottom:10px}
+.chip{background:#f2f0ec;border:1px solid #e0ddd6;border-radius:20px;padding:3px 12px;font-size:12px;color:#4a4844;display:inline-flex;align-items:center;margin:3px 4px 3px 0}
+.larea{text-align:center;padding:28px 0 12px}
+.spin{width:36px;height:36px;border:3px solid #e0ddd6;border-top-color:#0e1f3d;border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.ltxt{font-size:14px;color:#4a4844}
+.lsub{font-size:12px;color:#8a8680;margin-top:6px;line-height:1.7}
+.ebox{background:#fdf0ee;border:1px solid #f0c0b8;border-radius:6px;padding:12px 16px;font-size:13px;color:#b03020;margin-bottom:16px}
+.rhdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:24px;gap:16px;flex-wrap:wrap}
+.rttl{font-size:20px;font-weight:500;letter-spacing:-.3px;margin-bottom:4px}
+.rmeta{font-size:13px;color:#8a8680}
+.sgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:24px}
+.scard{background:#f8f7f4;border:1px solid #e0ddd6;border-radius:10px;padding:13px 15px;text-align:center}
+.scard .v{font-size:22px;font-weight:500;font-family:'DM Mono',monospace;color:#0e1f3d;margin-bottom:4px}
+.scard .l{font-size:11px;color:#8a8680;text-transform:uppercase;letter-spacing:.05em}
+.sectit{font-size:11px;font-weight:600;color:#8a8680;text-transform:uppercase;letter-spacing:.1em;padding-bottom:8px;border-bottom:1px solid #e0ddd6;margin-bottom:12px}
+.tblwrap{overflow:hidden;border:1px solid #e0ddd6;border-radius:10px;margin-bottom:24px;overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:580px}
+thead tr{background:#f8f7f4}
+th{padding:9px 12px;font-size:11px;color:#8a8680;font-weight:500;text-align:left;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e0ddd6;white-space:nowrap}
+td{padding:9px 12px;font-size:13px;border-bottom:1px solid #e0ddd6;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tbody tr:hover td{background:#f8f7f4}
+.mono{font-family:'DM Mono',monospace;font-weight:500;font-size:14px}
+.badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11px;font-weight:500}
+.bg{background:#edf7f0;color:#1f7a45}.bb{background:#eef4fd;color:#1a4fa0}
+.by{background:#fef8ed;color:#a06010}.br{background:#fdf0ee;color:#b03020}
+.bn{background:#e8ecf5;color:#1a3360}
+.hlcard{background:#fff;border:1px solid #e0ddd6;border-radius:10px;padding:16px 20px;margin-bottom:10px;border-left:3px solid #2a4a8a}
+.hlcard.red{border-left-color:#b03020}.hlcard.amber{border-left-color:#c9933a}
+.hlhd{display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.hlno{font-size:15px;font-weight:600;font-family:'DM Mono',monospace}
+.hlbody{font-size:13px;color:#4a4844;line-height:1.75}
+.sumbox{background:#fdf6e8;border:1px solid #e8d5a0;border-radius:10px;padding:18px 22px}
+.sumbox p{font-size:14px;color:#4a4844;line-height:1.85}
+@media print{.hdr,.stepbar,.btn-row,.no-print{display:none!important}.card{box-shadow:none}body{background:#fff}}
+</style>
+</head>
+<body>
+
+<div class="hdr">
+  <div class="hdr-logo">KKJ <span>ENGLISH</span></div>
+  <div class="hdr-ttl">내신시험 분석기</div>
+  <div class="hdr-right">
+    <span class="dot off" id="sDot"></span>
+    <span id="sTxt">API 키 없음</span>
+    <button class="api-btn" id="apiBtn">API 키 설정</button>
+  </div>
+</div>
+
+<div class="overlay" id="apiModal" style="display:none">
+  <div class="modal">
+    <h2>Anthropic API 키 설정</h2>
+    <p>Claude AI 분석 기능을 사용하려면 Anthropic API 키가 필요합니다.<br>키는 이 브라우저에만 저장됩니다.</p>
+    <label class="flbl">API Key</label>
+    <input type="password" id="apiInp" placeholder="sk-ant-api03-..." autocomplete="off" style="margin-bottom:12px"/>
+    <div class="modal-row">
+      <button class="btn btn-ghost" id="apiCancel">취소</button>
+      <button class="btn btn-navy" id="apiSave">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="main">
+  <div class="stepbar" id="stepBar"></div>
+  <div id="app"></div>
+</div>
+
+<!-- hidden file inputs (always in DOM) -->
+<input type="file" id="examInp" accept="image/*" multiple style="display:none">
+<input type="file" id="pdfInp" accept=".pdf,application/pdf" multiple style="display:none">
+
+<script>
+// ── STATE ──────────────────────────────────
+var S = {
+  step: 1,
+  apiKey: localStorage.getItem('kkj_key') || '',
+  info: { school:'', grade:'1', semester:'1학기', exam:'1차 지필고사', year: String(new Date().getFullYear()) },
+  examFiles: [],   // {name, base64, mime, preview}
+  pdfFiles: [],    // {name, base64, size}
+  memo: '',
+  result: null,
+  loading: false,
+  error: ''
+};
+
+// ── API MODAL ──────────────────────────────
+document.getElementById('apiBtn').onclick = openApi;
+document.getElementById('apiCancel').onclick = closeApi;
+document.getElementById('apiSave').onclick = saveApi;
+document.getElementById('apiModal').onclick = function(e){ if(e.target===this) closeApi(); };
+
+function openApi(){ document.getElementById('apiInp').value = S.apiKey; document.getElementById('apiModal').style.display='flex'; }
+function closeApi(){ document.getElementById('apiModal').style.display='none'; }
+function saveApi(){
+  var k = document.getElementById('apiInp').value.trim();
+  if(!k) return;
+  S.apiKey = k; localStorage.setItem('kkj_key', k);
+  closeApi(); updateStatus();
+}
+function updateStatus(){
+  var d=document.getElementById('sDot'), t=document.getElementById('sTxt');
+  if(S.apiKey){ d.className='dot'; t.textContent='API 연결됨'; t.style.color='rgba(74,217,138,.9)'; }
+  else { d.className='dot off'; t.textContent='API 키 없음'; t.style.color='rgba(255,255,255,.55)'; }
+}
+
+// ── FILE INPUT EVENTS (always attached once) ──
+document.getElementById('examInp').addEventListener('change', function(){
+  addExamFiles(this.files);
+  this.value = '';
+});
+document.getElementById('pdfInp').addEventListener('change', function(){
+  addPdfFiles(this.files);
+  this.value = '';
+});
+
+// ── FILE UTILS ──────────────────────────────
+function toB64(file){
+  return new Promise(function(res, rej){
+    var r = new FileReader();
+    r.onload = function(){ res(r.result.split(',')[1]); };
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+function fmtSize(b){ return b < 1048576 ? Math.round(b/1024)+'KB' : (b/1048576).toFixed(1)+'MB'; }
+
+function compressImg(file){
+  return new Promise(function(res, rej){
+    var img = new Image();
+    var url = URL.createObjectURL(file);
+    img.onload = function(){
+      var MAX=1600, w=img.width, h=img.height;
+      if(w>MAX||h>MAX){ if(w>h){h=Math.round(h*MAX/w);w=MAX;}else{w=Math.round(w*MAX/h);h=MAX;} }
+      var c = document.createElement('canvas');
+      c.width=w; c.height=h;
+      c.getContext('2d').drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);
+      res(c.toDataURL('image/jpeg', 0.82).split(',')[1]);
+    };
+    img.onerror = rej;
+    img.src = url;
+  });
+}
+
+async function addExamFiles(files){
+  var arr = Array.from(files).slice(0, 10 - S.examFiles.length);
+  for(var f of arr){
+    var b64 = await compressImg(f);
+    S.examFiles.push({ name:f.name, base64:b64, mime:'image/jpeg', preview:URL.createObjectURL(f) });
+  }
+  render();
+}
+function removeExam(i){ S.examFiles.splice(i,1); render(); }
+
+async function addPdfFiles(files){
+  var arr = Array.from(files).slice(0, 5 - S.pdfFiles.length);
+  for(var f of arr){
+    var b64 = await toB64(f);
+    S.pdfFiles.push({ name:f.name, base64:b64, size:fmtSize(f.size) });
+  }
+  render();
+}
+function removePdf(i){ S.pdfFiles.splice(i,1); render(); }
+
+// ── DRAG & DROP SETUP (runs after each render) ──
+function setupDrop(){
+  // Exam drop zone (empty state)
+  var ez = document.getElementById('examZone');
+  if(ez){
+    ez.addEventListener('dragover', function(e){ e.preventDefault(); ez.classList.add('over'); });
+    ez.addEventListener('dragleave', function(){ ez.classList.remove('over'); });
+    ez.addEventListener('drop', function(e){
+      e.preventDefault(); ez.classList.remove('over');
+      var files = Array.from(e.dataTransfer.files).filter(function(f){ return f.type.startsWith('image/'); });
+      if(files.length) addExamFiles(files);
+    });
+  }
+  // Exam thumb grid (files exist)
+  var tg = document.getElementById('thumbGrid');
+  if(tg){
+    tg.addEventListener('dragover', function(e){ e.preventDefault(); tg.style.outline='2px dashed #2a4a8a'; });
+    tg.addEventListener('dragleave', function(){ tg.style.outline=''; });
+    tg.addEventListener('drop', function(e){
+      e.preventDefault(); tg.style.outline='';
+      var files = Array.from(e.dataTransfer.files).filter(function(f){ return f.type.startsWith('image/'); });
+      if(files.length) addExamFiles(files);
+    });
+  }
+  // PDF drop zone (empty state)
+  var pz = document.getElementById('pdfZone');
+  if(pz){
+    pz.addEventListener('dragover', function(e){ e.preventDefault(); pz.classList.add('over'); });
+    pz.addEventListener('dragleave', function(){ pz.classList.remove('over'); });
+    pz.addEventListener('drop', function(e){
+      e.preventDefault(); pz.classList.remove('over');
+      var files = Array.from(e.dataTransfer.files).filter(function(f){ return f.type==='application/pdf' || f.name.endsWith('.pdf'); });
+      if(files.length) addPdfFiles(files);
+    });
+  }
+  // Delete buttons
+  document.querySelectorAll('.tdel').forEach(function(btn){
+    btn.addEventListener('click', function(){ removeExam(parseInt(btn.dataset.i)); });
+  });
+  document.querySelectorAll('.fdel').forEach(function(btn){
+    btn.addEventListener('click', function(){ removePdf(parseInt(btn.dataset.i)); });
+  });
+  // Trigger file inputs via labels (already handled by label[for], but for tadd-lbl)
+  document.querySelectorAll('[data-trigger]').forEach(function(el){
+    el.addEventListener('click', function(){ document.getElementById(el.dataset.trigger).click(); });
+  });
+  // Step navigation
+  var b;
+  if(b=document.getElementById('btnPrev')) b.addEventListener('click', function(){ S.step--; render(); });
+  if(b=document.getElementById('btnNext')) b.addEventListener('click', handleNext);
+  if(b=document.getElementById('btnAnalyze')) b.addEventListener('click', runAnalysis);
+  if(b=document.getElementById('btnExport')) b.addEventListener('click', exportReport);
+  if(b=document.getElementById('btnReset')) b.addEventListener('click', resetAll);
+  if(b=document.getElementById('btnGoS2')) b.addEventListener('click', goStep2);
+  // Memo
+  var m = document.getElementById('fMemo');
+  if(m) m.addEventListener('input', function(){ S.memo = m.value; });
+  // School input enter
+  var sc = document.getElementById('fSchool');
+  if(sc) sc.addEventListener('keydown', function(e){ if(e.key==='Enter') goStep2(); });
+}
+
+// ── HELPERS ─────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function stars(n){ return [1,2,3,4,5].map(function(i){ return '<span style="color:'+(i<=n?'#c97316':'#d0cdc5')+';font-size:13px">★</span>'; }).join(''); }
+function modBadge(lv,pct){ var m={'원문동일':'bg','소변형':'bb','중변형':'by','고변형':'br'}; return '<span class="badge '+(m[lv]||'bb')+'">'+lv+' '+pct+'%</span>'; }
+function tagBadge(t){ var m={'고난도':'br','고변형':'by','함정':'bn'}; return '<span class="badge '+(m[t]||'bn')+'" style="margin-right:4px">'+t+'</span>'; }
+function typePill(t){ return t?'<span style="font-size:11px;color:#555;background:#f0f0ee;padding:2px 9px;border-radius:20px;border:1px solid #e0ddd6">'+esc(t)+'</span>':''; }
+
+// ── STEPBAR ─────────────────────────────────
+function renderStepBar(){
+  var labels=['학교 정보','파일 업로드','분석 실행','결과'];
+  document.getElementById('stepBar').innerHTML = labels.map(function(l,i){
+    var n=i+1, st=n<S.step?'done':n===S.step?'on':'off';
+    return '<div class="si"><div class="snum '+st+'">'+(st==='done'?'✓':n)+'</div><div class="slbl '+st+'">'+l+'</div></div>'+(i<3?'<div class="sconn"></div>':'');
+  }).join('');
+}
+
+// ── STEP 1 ───────────────────────────────────
+function step1Html(){
+  var i=S.info;
+  var yOpts = ['2026','2025','2024'].map(function(y){ return '<option'+(y===i.year?' selected':'')+'>'+y+'</option>'; }).join('');
+  var gOpts = ['1','2','3'].map(function(g){ return '<option value="'+g+'"'+(g===i.grade?' selected':'')+'>'+g+'학년</option>'; }).join('');
+  var sOpts = ['1학기','2학기'].map(function(s){ return '<option'+(s===i.semester?' selected':'')+'>'+s+'</option>'; }).join('');
+  var eOpts = ['1차 지필고사','2차 지필고사'].map(function(e){ return '<option'+(e===i.exam?' selected':'')+'>'+e+'</option>'; }).join('');
+  return '<div class="card">'
+    +'<div class="card-ttl">학교 정보 입력</div>'
+    +'<div class="card-sub">분석 리포트 헤더에 표시될 기본 정보입니다.</div>'
+    +'<div class="fld"><label class="flbl">학교명</label>'
+    +'<input type="text" id="fSchool" value="'+esc(i.school)+'" placeholder="예: 미강고등학교"/></div>'
+    +'<div class="g4">'
+    +'<div class="fld"><label class="flbl">연도</label><select id="fYear">'+yOpts+'</select></div>'
+    +'<div class="fld"><label class="flbl">학년</label><select id="fGrade">'+gOpts+'</select></div>'
+    +'<div class="fld"><label class="flbl">학기</label><select id="fSem">'+sOpts+'</select></div>'
+    +'<div class="fld"><label class="flbl">지필고사</label><select id="fExam">'+eOpts+'</select></div>'
+    +'</div>'
+    +'<div class="btn-row"><button class="btn btn-navy" id="btnGoS2">다음 단계 →</button></div>'
+    +'</div>';
+}
+function goStep2(){
+  var s = (document.getElementById('fSchool')||{value:''}).value.trim();
+  if(!s){ alert('학교명을 입력해주세요.'); return; }
+  S.info = {
+    school: s,
+    year: document.getElementById('fYear').value,
+    grade: document.getElementById('fGrade').value,
+    semester: document.getElementById('fSem').value,
+    exam: document.getElementById('fExam').value
+  };
+  S.step=2; render();
+}
+
+// ── STEP 2 ───────────────────────────────────
+function step2Html(){
+  var examSection;
+  if(S.examFiles.length === 0){
+    examSection = '<div class="uzone" id="examZone">'
+      +'<div class="ico">🖼</div>'
+      +'<div class="utxt">시험지 이미지 선택 또는 드롭</div>'
+      +'<div class="uhint">JPG · PNG · 여러 장 동시 선택 · 드래그 앤 드롭 · 최대 10페이지</div>'
+      +'<label for="examInp" style="margin-top:12px;display:inline-block;padding:7px 18px;background:#0e1f3d;color:#fff;border-radius:6px;font-size:13px;cursor:pointer">파일 선택</label>'
+      +'</div>';
+  } else {
+    var thumbs = S.examFiles.map(function(f,i){
+      return '<div class="twrap">'
+        +'<img src="'+f.preview+'" class="timg" alt="p'+(i+1)+'"/>'
+        +'<div class="tlbl">'+(i+1)+'p</div>'
+        +'<button class="tdel" data-i="'+i+'" type="button">×</button>'
+        +'</div>';
+    }).join('');
+    var addBtn = S.examFiles.length < 10
+      ? '<label for="examInp" class="tadd-lbl">+</label>'
+      : '';
+    examSection = '<div class="tgrid" id="thumbGrid">'+thumbs+addBtn+'</div>';
+  }
+
+  var pdfSection;
+  if(S.pdfFiles.length === 0){
+    pdfSection = '<div class="uzone" id="pdfZone">'
+      +'<div class="ico">📄</div>'
+      +'<div class="utxt">원본 지문 PDF 선택 또는 드롭</div>'
+      +'<div class="uhint">교과서 · 부교재 · 프린트 PDF · 드래그 앤 드롭 · 최대 5개</div>'
+      +'<label for="pdfInp" style="margin-top:12px;display:inline-block;padding:7px 18px;background:#0e1f3d;color:#fff;border-radius:6px;font-size:13px;cursor:pointer">파일 선택</label>'
+      +'</div>';
+  } else {
+    var rows = S.pdfFiles.map(function(f,i){
+      return '<div class="frow">'
+        +'<div class="fico">PDF</div>'
+        +'<div class="finf"><div class="fname">'+esc(f.name)+'</div><div class="fsize">'+f.size+'</div></div>'
+        +'<button class="fdel" data-i="'+i+'" type="button">삭제</button>'
+        +'</div>';
+    }).join('');
+    var addMore = S.pdfFiles.length < 5
+      ? '<label for="pdfInp" class="padd-lbl">+ PDF 추가 <span style="font-size:11px;opacity:.6">('+S.pdfFiles.length+'/5)</span></label>'
+      : '';
+    pdfSection = rows + addMore;
+  }
+
+  return '<div class="card">'
+    +'<div class="card-ttl">파일 업로드</div>'
+    +'<div class="card-sub">'+esc(S.info.school)+' · '+S.info.grade+'학년 · '+S.info.semester+' '+S.info.exam+'</div>'
+    +'<div class="fld"><label class="flbl">① 시험지 이미지 <span style="color:#8a8680;font-weight:400;text-transform:none">JPG / PNG · 최대 10페이지</span></label>'
+    +examSection+'</div>'
+    +'<div class="fld" style="margin-top:24px"><label class="flbl">② 원본 지문 PDF <span style="color:#8a8680;font-weight:400;text-transform:none">최대 5개 · Claude가 시험지와 자동 매칭</span></label>'
+    +pdfSection+'</div>'
+    +'<div class="fld" style="margin-top:24px"><label class="flbl">③ 자료 구성 메모 <span style="color:#8a8680;font-weight:400;text-transform:none">선택 · 출처 매칭 정확도 향상</span></label>'
+    +'<input type="text" id="fMemo" value="'+esc(S.memo)+'" placeholder="예: 천재교육 교과서 1~5과, 리딩파워 1강~3강, 26년 3월 모의 일부"/></div>'
+    +'<div class="btn-row">'
+    +'<button class="btn btn-ghost" id="btnPrev">← 이전</button>'
+    +'<button class="btn btn-navy" id="btnNext">분석 준비 완료 →</button>'
+    +'</div></div>';
+}
+function handleNext(){
+  if(!S.examFiles.length){ alert('시험지 이미지를 최소 1장 업로드해주세요.'); return; }
+  if(!S.pdfFiles.length){ alert('원본 지문 PDF를 최소 1개 업로드해주세요.'); return; }
+  S.step=3; render();
+}
+
+// ── STEP 3 ───────────────────────────────────
+function step3Html(){
+  return '<div class="card">'
+    +'<div class="card-ttl">분석 실행</div>'
+    +'<div class="card-sub">아래 내용을 확인하고 AI 분석을 시작하세요.</div>'
+    +'<div class="cbox"><div class="cbox-ttl">'+esc(S.info.school)+'</div>'
+    +'<span class="chip">📅 '+S.info.year+'년</span>'
+    +'<span class="chip">🎓 '+S.info.grade+'학년</span>'
+    +'<span class="chip">📚 '+S.info.semester+' '+S.info.exam+'</span>'
+    +'<span class="chip">🖼 시험지 '+S.examFiles.length+'페이지</span>'
+    +'<span class="chip">📄 지문 PDF '+S.pdfFiles.length+'개</span>'
+    +'</div>'
+    +(!S.apiKey?'<div class="ebox">⚠ API 키가 설정되지 않았습니다. 우측 상단 <strong>API 키 설정</strong>을 먼저 완료해주세요.</div>':'')
+    +(S.error?'<div class="ebox">⚠ '+esc(S.error)+'</div>':'')
+    +(S.loading?'<div class="larea"><div class="spin"></div><div class="ltxt">AI가 시험지와 원본 지문을 분석 중입니다...</div><div class="lsub">시험지 이미지와 PDF를 비교·매칭하고 있습니다.<br>문항 수에 따라 30초~2분 소요될 수 있습니다.</div></div>':'')
+    +'<div class="btn-row">'
+    +'<button class="btn btn-ghost" id="btnPrev" '+(S.loading?'disabled':'')+'>← 수정</button>'
+    +'<button class="btn btn-gold" id="btnAnalyze" '+((S.loading||!S.apiKey)?'disabled':'')+'>🔍 AI 분석 시작</button>'
+    +'</div></div>';
+}
+
+// ── SYSTEM PROMPT ────────────────────────────
+var SYS = '당신은 한국 고등학교 영어 내신시험 전문 분석가입니다.\n'
+  +'시험지 이미지와 원본 지문 PDF를 함께 받습니다.\n'
+  +'PDF에 수록된 원본 지문들을 시험지의 각 문항과 자동으로 매칭하여 분석해주세요.\n'
+  +'마크다운 코드블록 없이 순수 JSON만 출력하세요.\n\n'
+  +'{\n'
+  +'  "total_questions": number,\n'
+  +'  "questions": [\n'
+  +'    {\n'
+  +'      "no": number,\n'
+  +'      "type": "유형명",\n'
+  +'      "source": "출처 구체적으로. 예: 교과서 3과, 부교재 2강-4번, 26년 3월 모의 29번",\n'
+  +'      "difficulty": number,\n'
+  +'      "mod_pct": number,\n'
+  +'      "mod_level": "원문동일|소변형|중변형|고변형",\n'
+  +'      "notable": "출제 포인트 1~2문장 또는 null"\n'
+  +'    }\n'
+  +'  ],\n'
+  +'  "highlights": [\n'
+  +'    { "no": number, "tags": ["고난도","고변형","함정" 중 해당], "comment": "2~4문장" }\n'
+  +'  ],\n'
+  +'  "summary": "총평 3~5문장"\n'
+  +'}\n\n'
+  +'유형명: 주제, 요지, 제목, 요약문빈칸, 빈칸추론, 글의순서, 문장삽입, 어법(선택), 어법(서술), 어휘(문맥), 내용일치, 내용불일치, 밑줄의미, 함축의미, 심경/분위기, 목적, 주장, 기타\n'
+  +'mod_pct: 0=원문그대로 / 30=어휘일부교체 / 50=문장구조변형 / 70=내용일부변경 / 90=완전변형\n'
+  +'mod_level: 원문동일(0~15%) / 소변형(16~40%) / 중변형(41~65%) / 고변형(66~100%)\n'
+  +'highlights: difficulty≥4 또는 mod_pct≥50 위주, 최소 3개 이상';
+
+async function runAnalysis(){
+  if(!S.apiKey){ alert('API 키를 먼저 설정해주세요.'); return; }
+  S.loading=true; S.error=''; render();
+  try{
+    var content = [];
+    S.examFiles.forEach(function(f){
+      content.push({ type:'image', source:{ type:'base64', media_type:f.mime, data:f.base64 } });
+    });
+    S.pdfFiles.forEach(function(f,i){
+      content.push({ type:'document', source:{ type:'base64', media_type:'application/pdf', data:f.base64 }, title:'지문PDF_'+(i+1) });
+    });
+    content.push({ type:'text', text:'학교: '+S.info.school+' / '+S.info.grade+'학년 / '+S.info.semester+' '+S.info.exam+' ('+S.info.year+'년)'+(S.memo?'\n자료 구성: '+S.memo:'')+'\n\n위 시험지 이미지들과 원본 지문 PDF '+S.pdfFiles.length+'개를 비교 분석하여 JSON으로만 응답해주세요.' });
+    var res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{ 'Content-Type':'application/json', 'x-api-key':S.apiKey, 'anthropic-version':'2023-06-01', 'anthropic-dangerous-direct-browser-access':'true' },
+      body: JSON.stringify({ model:'claude-opus-4-5', max_tokens:4096, system:SYS, messages:[{role:'user',content:content}] })
+    });
+    var data = await res.json();
+    if(data.error) throw new Error(data.error.message);
+    var txt = (data.content||[]).map(function(b){ return b.text||''; }).join('');
+    S.result = JSON.parse(txt.replace(/```json|```/g,'').trim());
+    S.step=4;
+  } catch(e){
+    S.error = '분석 오류: '+e.message;
+  } finally {
+    S.loading=false; render();
+  }
+}
+
+// ── STEP 4 ───────────────────────────────────
+function step4Html(){
+  var r=S.result, qs=r.questions||[];
+  var avgD = qs.length ? (qs.reduce(function(s,q){return s+q.difficulty;},0)/qs.length).toFixed(1) : '—';
+  var hiD = qs.filter(function(q){return q.difficulty>=4;}).length;
+  var hiM = qs.filter(function(q){return q.mod_pct>=50;}).length;
+
+  var rows = qs.map(function(q){
+    return '<tr>'
+      +'<td class="mono" style="text-align:center">'+q.no+'</td>'
+      +'<td>'+esc(q.type)+'</td>'
+      +'<td style="font-size:12px;color:#666">'+esc(q.source||'—')+'</td>'
+      +'<td>'+stars(q.difficulty)+'</td>'
+      +'<td>'+modBadge(q.mod_level,q.mod_pct)+'</td>'
+      +'<td style="font-size:12px;color:#4a4844;line-height:1.5">'+esc(q.notable||'—')+'</td>'
+      +'</tr>';
+  }).join('');
+
+  var hls = (r.highlights||[]).map(function(h){
+    var q = qs.find(function(x){return x.no===h.no;});
+    var cls = h.tags&&h.tags.includes('고난도') ? 'red' : 'amber';
+    return '<div class="hlcard '+cls+'">'
+      +'<div class="hlhd"><span class="hlno">'+h.no+'번</span>'
+      +(q?typePill(q.type):'')+' '
+      +(h.tags||[]).map(tagBadge).join('')
+      +'</div>'
+      +'<div class="hlbody">'+esc(h.comment)+'</div>'
+      +'</div>';
+  }).join('');
+
+  return '<div class="card">'
+    +'<div class="rhdr">'
+    +'<div><div class="rttl">'+esc(S.info.school)+' 내신 분석 리포트</div>'
+    +'<div class="rmeta">'+S.info.year+'년 · '+S.info.grade+'학년 · '+S.info.semester+' '+S.info.exam+' · 총 '+(r.total_questions||qs.length)+'문항</div></div>'
+    +'<div style="display:flex;gap:8px;flex-wrap:wrap" class="no-print">'
+    +'<button class="btn btn-navy" id="btnExport">보고서 내보내기</button>'
+    +'<button class="btn btn-ghost" id="btnReset">새 분석 시작</button>'
+    +'</div></div>'
+    +'<div class="sgrid">'
+    +[['총 문항',r.total_questions||qs.length],['평균 난이도',avgD],['고난도 문항',hiD+'개'],['고변형 문항',hiM+'개']].map(function(m){
+      return '<div class="scard"><div class="v">'+m[1]+'</div><div class="l">'+m[0]+'</div></div>';
+    }).join('')
+    +'</div>'
+    +'<div class="sectit">문항별 분석</div>'
+    +'<div class="tblwrap"><table>'
+    +'<thead><tr><th style="width:5%;text-align:center">번호</th><th style="width:12%">유형</th><th style="width:18%">원본 지문</th><th style="width:15%">난이도</th><th style="width:17%">변형도</th><th>출제 포인트</th></tr></thead>'
+    +'<tbody>'+rows+'</tbody></table></div>'
+    +'<div class="sectit" style="margin-top:8px">주요 문항 분석</div>'
+    +(hls||'<p style="color:#8a8680;font-size:13px;padding-bottom:16px">해당 없음</p>')
+    +'<div class="sectit" style="margin-top:20px">종합 총평</div>'
+    +'<div class="sumbox"><p>'+esc(r.summary||'—')+'</p></div>'
+    +'</div>';
+}
+
+// ── EXPORT REPORT ─────────────────────────────
+function exportReport(){
+  var r=S.result, qs=r.questions||[];
+  var avgD=qs.length?(qs.reduce(function(s,q){return s+q.difficulty;},0)/qs.length).toFixed(1):'—';
+  var hiD=qs.filter(function(q){return q.difficulty>=4;}).length;
+  var hiM=qs.filter(function(q){return q.mod_pct>=50;}).length;
+  var lvBg={'원문동일':'#edf7f0','소변형':'#eef4fd','중변형':'#fef8ed','고변형':'#fdf0ee'};
+  var lvC={'원문동일':'#1f7a45','소변형':'#1a4fa0','중변형':'#a06010','고변형':'#b03020'};
+  var tgBg={'고난도':'#fdf0ee','고변형':'#fef8ed','함정':'#f0f0f0'};
+  var tgC={'고난도':'#b03020','고변형':'#a06010','함정':'#3a3a3a'};
+  function rStars(n){ return [1,2,3,4,5].map(function(i){ return '<span style="color:'+(i<=n?'#c97316':'#d0cdc5')+';font-size:13px">★</span>'; }).join(''); }
+  function rBadge(lv,pct){ return '<span style="background:'+(lvBg[lv]||'#eef4fd')+';color:'+(lvC[lv]||'#1a4fa0')+';padding:2px 9px;border-radius:20px;font-size:11px;font-weight:600">'+lv+' '+pct+'%</span>'; }
+  function rTag(t){ return '<span style="background:'+(tgBg[t]||'#f0f0f0')+';color:'+(tgC[t]||'#333')+';padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;margin-right:4px">'+t+'</span>'; }
+  function rType(t){ return t?'<span style="font-size:11px;color:#555;background:#f0f0ee;padding:2px 9px;border-radius:20px;border:1px solid #e0ddd6">'+esc(t)+'</span>':''; }
+  var rows=qs.map(function(q,i){
+    return '<tr style="background:'+(i%2===0?'#fff':'#fafaf8')+'">'
+      +'<td style="padding:8px 12px;font-family:monospace;font-weight:600;text-align:center">'+q.no+'</td>'
+      +'<td style="padding:8px 12px;font-size:13px">'+esc(q.type)+'</td>'
+      +'<td style="padding:8px 12px;font-size:12px;color:#666">'+esc(q.source||'—')+'</td>'
+      +'<td style="padding:8px 12px">'+rStars(q.difficulty)+'</td>'
+      +'<td style="padding:8px 12px">'+rBadge(q.mod_level,q.mod_pct)+'</td>'
+      +'<td style="padding:8px 12px;font-size:12px;color:#444;line-height:1.5">'+esc(q.notable||'—')+'</td>'
+      +'</tr>';
+  }).join('');
+  var hls=(r.highlights||[]).map(function(h){
+    var q=qs.find(function(x){return x.no===h.no;});
+    var bc=h.tags&&h.tags.includes('고난도')?'#b03020':'#c9933a';
+    return '<div style="border:1px solid #e8e4dc;border-left:3px solid '+bc+';border-radius:8px;padding:14px 18px;margin-bottom:10px;background:#fff">'
+      +'<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;flex-wrap:wrap">'
+      +'<span style="font-size:15px;font-weight:600;font-family:monospace">'+h.no+'번</span>'
+      +(q?rType(q.type):'')+' '
+      +(h.tags||[]).map(rTag).join('')
+      +'</div>'
+      +'<p style="font-size:13px;color:#444;line-height:1.75;margin:0">'+esc(h.comment)+'</p>'
+      +'</div>';
+  }).join('');
+  var html='<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">'
+    +'<title>'+esc(S.info.school)+' 내신 분석 리포트</title>'
+    +'<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">'
+    +'<style>*{box-sizing:border-box;margin:0;padding:0}body{font-family:\'Noto Sans KR\',sans-serif;background:#f5f4f0;color:#1a1a1a;font-size:14px}.page{max-width:840px;margin:0 auto;padding:36px 28px 60px}.rh{background:#0e1f3d;border-radius:12px;padding:24px 28px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:12px}.rh-school{font-size:22px;font-weight:700;color:#fff;letter-spacing:-.5px;margin-bottom:4px}.rh-meta{font-size:13px;color:rgba(255,255,255,.6)}.rh-logo{font-size:12px;font-weight:700;letter-spacing:.1em;color:rgba(255,255,255,.35);text-align:right;line-height:1.7}.rh-logo span{color:#e8b96a}.sg{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}.sc{background:#fff;border:1px solid #e0ddd6;border-radius:10px;padding:13px 15px;text-align:center}.sc .v{font-size:22px;font-weight:500;font-family:\'DM Mono\',monospace;color:#0e1f3d;margin-bottom:4px}.sc .l{font-size:11px;color:#8a8680;text-transform:uppercase;letter-spacing:.05em}.sec{font-size:11px;font-weight:600;color:#8a8680;text-transform:uppercase;letter-spacing:.1em;padding-bottom:8px;border-bottom:1px solid #e0ddd6;margin-bottom:12px}.tw{border:1px solid #e0ddd6;border-radius:10px;overflow:hidden;margin-bottom:22px;overflow-x:auto}table{width:100%;border-collapse:collapse;min-width:540px}thead tr{background:#f5f4f0}th{padding:8px 12px;font-size:11px;color:#8a8680;font-weight:500;text-align:left;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #e0ddd6;white-space:nowrap}td{border-bottom:1px solid #ede9e2;vertical-align:middle}tr:last-child td{border-bottom:none}.sb{background:#fdf6e8;border:1px solid #e8d5a0;border-radius:10px;padding:16px 20px}.sb p{font-size:13px;color:#4a4844;line-height:1.85}.pb{display:inline-flex;align-items:center;gap:8px;background:#0e1f3d;color:#fff;border:none;border-radius:6px;padding:9px 18px;font-family:\'Noto Sans KR\',sans-serif;font-size:14px;font-weight:500;cursor:pointer;margin-bottom:22px}.pb:hover{background:#1a3360}.gen{font-size:11px;color:#bbb;text-align:right;margin-top:20px}@media print{body{background:#fff}.pb{display:none}.rh{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style>'
+    +'</head><body><div class="page">'
+    +'<button class="pb" onclick="window.print()">PDF로 저장 / 인쇄</button>'
+    +'<div class="rh"><div><div class="rh-school">'+esc(S.info.school)+'</div><div class="rh-meta">'+S.info.year+'년 · '+S.info.grade+'학년 · '+S.info.semester+' '+S.info.exam+' · 총 '+(r.total_questions||qs.length)+'문항</div></div>'
+    +'<div class="rh-logo">KKJ <span>ENGLISH</span><br><span style="font-weight:400;font-size:10px;color:rgba(255,255,255,.3)">내신시험 분석 리포트</span></div></div>'
+    +'<div class="sg">'
+    +[['총 문항',r.total_questions||qs.length],['평균 난이도',avgD],['고난도 문항',hiD+'개'],['고변형 문항',hiM+'개']].map(function(m){ return '<div class="sc"><div class="v">'+m[1]+'</div><div class="l">'+m[0]+'</div></div>'; }).join('')
+    +'</div>'
+    +'<div class="sec">문항별 분석</div>'
+    +'<div class="tw"><table><thead><tr><th style="width:5%;text-align:center">번호</th><th style="width:12%">유형</th><th style="width:18%">원본 지문</th><th style="width:14%">난이도</th><th style="width:17%">변형도</th><th>출제 포인트</th></tr></thead><tbody>'+rows+'</tbody></table></div>'
+    +'<div class="sec">주요 문항 분석</div>'
+    +(hls||'<p style="color:#aaa;font-size:13px;padding-bottom:14px">해당 없음</p>')
+    +'<div class="sec" style="margin-top:20px">종합 총평</div>'
+    +'<div class="sb"><p>'+esc(r.summary||'—')+'</p></div>'
+    +'<div class="gen">Generated by KKJ ENGLISH 내신시험 분석기 · '+new Date().toLocaleDateString('ko-KR')+'</div>'
+    +'</div></body></html>';
+  var w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
+// ── RESET ────────────────────────────────────
+function resetAll(){
+  S = { step:1, apiKey:localStorage.getItem('kkj_key')||'', info:{school:'',grade:'1',semester:'1학기',exam:'1차 지필고사',year:String(new Date().getFullYear())}, examFiles:[], pdfFiles:[], memo:'', result:null, loading:false, error:'' };
+  render();
+}
+
+// ── MAIN RENDER ──────────────────────────────
+function render(){
+  renderStepBar();
+  updateStatus();
+  var html = { 1:step1Html, 2:step2Html, 3:step3Html, 4:step4Html };
+  document.getElementById('app').innerHTML = (html[S.step]||step1Html)();
+  setupDrop();
+}
+
+// ── INIT ─────────────────────────────────────
+render();
+if(!S.apiKey) setTimeout(openApi, 600);
+</script>
+</body>
+</html>
