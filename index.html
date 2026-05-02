@@ -5,6 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>내신시험 분석기 | KKJ ENGLISH</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/docx/7.8.2/docx.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pptxgenjs/3.12.0/pptxgen.bundle.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'Noto Sans KR',sans-serif;background:#f2f0ec;color:#1a1a1a;min-height:100vh;font-size:14px;line-height:1.6}
@@ -158,6 +160,7 @@ var S = {
   pdfFiles: [],    // {name, base64, size}
   memo: '',
   result: null,
+  editMode: false,
   loading: false,
   error: ''
 };
@@ -227,9 +230,9 @@ async function addExamFiles(files){
     var b64 = await compressImg(f);
     S.examFiles.push({ name:f.name, base64:b64, mime:'image/jpeg', preview:URL.createObjectURL(f) });
   }
-  render();
+  saveState(); render();
 }
-function removeExam(i){ S.examFiles.splice(i,1); render(); }
+function removeExam(i){ S.examFiles.splice(i,1); saveState(); render(); }
 
 async function addPdfFiles(files){
   var arr = Array.from(files).slice(0, 5 - S.pdfFiles.length);
@@ -237,9 +240,9 @@ async function addPdfFiles(files){
     var b64 = await toB64(f);
     S.pdfFiles.push({ name:f.name, base64:b64, size:fmtSize(f.size) });
   }
-  render();
+  saveState(); render();
 }
-function removePdf(i){ S.pdfFiles.splice(i,1); render(); }
+function removePdf(i){ S.pdfFiles.splice(i,1); saveState(); render(); }
 
 // ── DRAG & DROP SETUP (runs after each render) ──
 function setupDrop(){
@@ -287,8 +290,34 @@ function setupDrop(){
   document.querySelectorAll('[data-trigger]').forEach(function(el){
     el.addEventListener('click', function(){ document.getElementById(el.dataset.trigger).click(); });
   });
-  // Step navigation
-  var b;
+  // Edit mode buttons
+  var be;
+  if(be=document.getElementById('btnEdit')) be.addEventListener('click', toggleEdit);
+  if(be=document.getElementById('btnDocx')) be.addEventListener('click', exportDocx);
+  if(be=document.getElementById('btnPptx')) be.addEventListener('click', exportPptx);
+
+  // 편집 모드: 별점 클릭
+  document.querySelectorAll('.estr').forEach(function(el){
+    el.addEventListener('click', function(){
+      updateQ(parseInt(el.dataset.qi), 'difficulty', parseInt(el.dataset.v));
+    });
+  });
+  // 편집 모드: select/input 변경
+  document.querySelectorAll('[data-qi][data-f]').forEach(function(el){
+    el.addEventListener('change', function(){ updateQ(parseInt(el.dataset.qi), el.dataset.f, el.value); });
+    el.addEventListener('blur',   function(){ updateQ(parseInt(el.dataset.qi), el.dataset.f, el.value); });
+  });
+  // 편집 모드: 하이라이트 textarea
+  document.querySelectorAll('[data-hi][data-f]').forEach(function(el){
+    el.addEventListener('blur', function(){ updateHL(parseInt(el.dataset.hi), el.dataset.f, el.value); });
+  });
+  // 편집 모드: 태그 토글
+  document.querySelectorAll('.etag').forEach(function(el){
+    el.addEventListener('click', function(){ toggleTag(parseInt(el.dataset.hi), el.dataset.tag); });
+  });
+  // 편집 모드: 총평
+  var es = document.getElementById('editSummary');
+  if(es) es.addEventListener('blur', function(){ updateSummary(es.value); });
   if(b=document.getElementById('btnPrev')) b.addEventListener('click', function(){ S.step--; render(); });
   if(b=document.getElementById('btnNext')) b.addEventListener('click', handleNext);
   if(b=document.getElementById('btnAnalyze')) b.addEventListener('click', runAnalysis);
@@ -350,7 +379,7 @@ function goStep2(){
     semester: document.getElementById('fSem').value,
     exam: document.getElementById('fExam').value
   };
-  S.step=2; render();
+  S.step=2; saveState(); render();
 }
 
 // ── STEP 2 ───────────────────────────────────
@@ -416,7 +445,7 @@ function step2Html(){
 function handleNext(){
   if(!S.examFiles.length){ alert('시험지 이미지를 최소 1장 업로드해주세요.'); return; }
   if(!S.pdfFiles.length){ alert('원본 지문 PDF를 최소 1개 업로드해주세요.'); return; }
-  S.step=3; render();
+  S.step=3; saveState(); render();
 }
 
 // ── STEP 3 ───────────────────────────────────
@@ -461,7 +490,7 @@ var SYS = '당신은 한국 고등학교 영어 내신시험 전문 분석가입
   +'  "highlights": [\n'
   +'    { "no": number, "tags": ["고난도","고변형","함정" 중 해당], "comment": "2~4문장" }\n'
   +'  ],\n'
-  +'  "summary": "총평 3~5문장"\n'
+  +'  "summary": "총평 3~5문장. 반드시 첫 문장에 출처별 문항 수를 구체적으로 명시할 것. 예: \'교과서 1과 3문항, 2과 4문항, 3과 2문항, 26년 3월 모의 2문항, 부교재 리딩파워 1강 3문항으로 구성되었다.\' 처럼 각 출처를 개별적으로 분리하여 숫자로 표기. 이후 문장에서 난이도 분포(고난도 몇 문항), 변형 출제 경향, 주요 출제 포인트를 서술."\n'
   +'}\n\n'
   +'유형명: 주제, 요지, 제목, 요약문빈칸, 빈칸추론, 글의순서, 문장삽입, 어법(선택), 어법(서술), 어휘(문맥), 내용일치, 내용불일치, 밑줄의미, 함축의미, 심경/분위기, 목적, 주장, 기타\n'
   +'mod_pct 기준 (원본 문장을 얼마나 변형했는가만 측정. 발췌 비율과 무관):\n'
@@ -503,44 +532,128 @@ async function runAnalysis(){
   }
 }
 
+// ── EDIT HELPERS ─────────────────────────────
+var TYPES = ['주제','요지','제목','요약문빈칸','빈칸추론','글의순서','문장삽입','어법(선택)','어법(서술)','어휘(문맥)','내용일치','내용불일치','밑줄의미','함축의미','심경/분위기','목적','주장','기타'];
+
+function pctToLevel(p){
+  p = parseInt(p)||0;
+  if(p<=15) return '원문동일';
+  if(p<=40) return '소변형';
+  if(p<=65) return '중변형';
+  return '고변형';
+}
+function updateQ(i, field, val){
+  if(!S.result||!S.result.questions) return;
+  S.result.questions[i][field] = field==='difficulty'||field==='mod_pct' ? parseInt(val)||0 : val;
+  if(field==='mod_pct') S.result.questions[i].mod_level = pctToLevel(val);
+  saveState();
+  // 별점만 즉시 재렌더, 나머지는 포커스 잃을 때 처리
+  if(field==='difficulty') render();
+}
+function updateHL(i, field, val){
+  if(!S.result||!S.result.highlights) return;
+  S.result.highlights[i][field] = val;
+  saveState();
+}
+function toggleTag(hi, tag){
+  if(!S.result||!S.result.highlights) return;
+  var tags = S.result.highlights[hi].tags || [];
+  var idx = tags.indexOf(tag);
+  if(idx>=0) tags.splice(idx,1); else tags.push(tag);
+  S.result.highlights[hi].tags = tags;
+  saveState(); render();
+}
+function updateSummary(val){ if(S.result){ S.result.summary=val; saveState(); } }
+function toggleEdit(){ S.editMode=!S.editMode; render(); }
+
 // ── STEP 4 ───────────────────────────────────
 function step4Html(){
-  var r=S.result, qs=r.questions||[];
+  var r=S.result, qs=r.questions||[], em=S.editMode;
   var avgD = qs.length ? (qs.reduce(function(s,q){return s+q.difficulty;},0)/qs.length).toFixed(1) : '—';
   var hiD = qs.filter(function(q){return q.difficulty>=4;}).length;
   var hiM = qs.filter(function(q){return q.mod_pct>=50;}).length;
 
-  var rows = qs.map(function(q){
-    return '<tr>'
+  // 편집 가능한 인풋 스타일
+  var inp = 'style="width:100%;border:1px solid #c8c4ba;border-radius:4px;padding:4px 7px;font-family:\'Noto Sans KR\',sans-serif;font-size:12px;background:#fff;outline:none"';
+  var typeOpts = TYPES.map(function(t){ return '<option'+(t==='{V}'?' selected':'')+'>'+t+'</option>'; });
+
+  var rows = qs.map(function(q,i){
+    if(!em){
+      return '<tr>'
+        +'<td class="mono" style="text-align:center">'+q.no+'</td>'
+        +'<td>'+esc(q.type)+'</td>'
+        +'<td style="font-size:12px;color:#666">'+esc(q.source||'—')+'</td>'
+        +'<td>'+stars(q.difficulty)+'</td>'
+        +'<td>'+modBadge(q.mod_level,q.mod_pct)+'</td>'
+        +'<td style="font-size:12px;color:#4a4844;line-height:1.5">'+esc(q.notable||'—')+'</td>'
+        +'</tr>';
+    }
+    // 편집 모드
+    var tOpts = TYPES.map(function(t){ return '<option'+(t===q.type?' selected':'')+'>'+t+'</option>'; }).join('');
+    var starEdit = [1,2,3,4,5].map(function(n){
+      return '<span data-qi="'+i+'" data-v="'+n+'" class="estr" style="cursor:pointer;font-size:16px;color:'+(n<=q.difficulty?'#c97316':'#d0cdc5')+'">★</span>';
+    }).join('');
+    return '<tr style="background:#fffef5">'
       +'<td class="mono" style="text-align:center">'+q.no+'</td>'
-      +'<td>'+esc(q.type)+'</td>'
-      +'<td style="font-size:12px;color:#666">'+esc(q.source||'—')+'</td>'
-      +'<td>'+stars(q.difficulty)+'</td>'
-      +'<td>'+modBadge(q.mod_level,q.mod_pct)+'</td>'
-      +'<td style="font-size:12px;color:#4a4844;line-height:1.5">'+esc(q.notable||'—')+'</td>'
+      +'<td><select data-qi="'+i+'" data-f="type" '+inp.replace('style="','style="appearance:none;')+'>'+tOpts+'</select></td>'
+      +'<td><input type="text" data-qi="'+i+'" data-f="source" value="'+esc(q.source||'')+'" '+inp+'/></td>'
+      +'<td><span style="display:inline-flex;gap:2px">'+starEdit+'</span></td>'
+      +'<td style="white-space:nowrap">'
+        +'<input type="number" data-qi="'+i+'" data-f="mod_pct" value="'+q.mod_pct+'" min="0" max="100" style="width:52px;border:1px solid #c8c4ba;border-radius:4px;padding:4px 6px;font-size:12px;text-align:center"/> %'
+        +'<br><span style="font-size:11px;color:#8a8680">→ '+pctToLevel(q.mod_pct)+'</span>'
+      +'</td>'
+      +'<td><input type="text" data-qi="'+i+'" data-f="notable" value="'+esc(q.notable||'')+'" '+inp+'/></td>'
       +'</tr>';
   }).join('');
 
-  var hls = (r.highlights||[]).map(function(h){
+  var hls = (r.highlights||[]).map(function(h,hi){
     var q = qs.find(function(x){return x.no===h.no;});
     var cls = h.tags&&h.tags.includes('고난도') ? 'red' : 'amber';
-    return '<div class="hlcard '+cls+'">'
+    var tags = h.tags||[];
+    if(!em){
+      return '<div class="hlcard '+cls+'">'
+        +'<div class="hlhd"><span class="hlno">'+h.no+'번</span>'
+        +(q?typePill(q.type):'')+' '
+        +tags.map(tagBadge).join('')
+        +'</div>'
+        +'<div class="hlbody">'+esc(h.comment)+'</div>'
+        +'</div>';
+    }
+    // 편집 모드 하이라이트
+    var tagToggles = ['고난도','고변형','함정'].map(function(t){
+      var on = tags.includes(t);
+      return '<span data-hi="'+hi+'" data-tag="'+t+'" class="etag" style="cursor:pointer;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid '+(on?'transparent':'#c8c4ba')+';background:'+(on?({'고난도':'#fdf0ee','고변형':'#fef8ed','함정':'#e8ecf5'}[t]):'')+';color:'+(on?({'고난도':'#b03020','고변형':'#a06010','함정':'#1a3360'}[t]):'#8a8680')+';margin-right:4px">'+t+'</span>';
+    }).join('');
+    return '<div class="hlcard" style="background:#fffef5">'
       +'<div class="hlhd"><span class="hlno">'+h.no+'번</span>'
       +(q?typePill(q.type):'')+' '
-      +(h.tags||[]).map(tagBadge).join('')
+      +tagToggles
+      +'<span style="font-size:11px;color:#8a8680;margin-left:4px">클릭으로 태그 토글</span>'
       +'</div>'
-      +'<div class="hlbody">'+esc(h.comment)+'</div>'
+      +'<textarea data-hi="'+hi+'" data-f="comment" rows="3" style="width:100%;border:1px solid #c8c4ba;border-radius:6px;padding:8px 10px;font-family:\'Noto Sans KR\',sans-serif;font-size:13px;resize:vertical;color:#4a4844;line-height:1.7">'+esc(h.comment)+'</textarea>'
       +'</div>';
   }).join('');
+
+  var summarySection = !em
+    ? '<div class="sumbox"><p>'+esc(r.summary||'—')+'</p></div>'
+    : '<textarea id="editSummary" rows="4" style="width:100%;border:1px solid #c8c4ba;border-radius:8px;padding:12px 16px;font-family:\'Noto Sans KR\',sans-serif;font-size:14px;resize:vertical;color:#4a4844;line-height:1.8;background:#fffef5">'+esc(r.summary||'')+'</textarea>';
+
+  var editNotice = em
+    ? '<div style="background:#fffef5;border:1px solid #e8d5a0;border-radius:8px;padding:10px 16px;font-size:12px;color:#a06010;margin-bottom:16px">✏️ 편집 모드 · 수정 내용은 자동 저장됩니다. 완료 후 <strong>편집 완료</strong>를 눌러주세요.</div>'
+    : '';
 
   return '<div class="card">'
     +'<div class="rhdr">'
     +'<div><div class="rttl">'+esc(S.info.school)+' 내신 분석 리포트</div>'
     +'<div class="rmeta">'+S.info.year+'년 · '+S.info.grade+'학년 · '+S.info.semester+' '+S.info.exam+' · 총 '+(r.total_questions||qs.length)+'문항</div></div>'
     +'<div style="display:flex;gap:8px;flex-wrap:wrap" class="no-print">'
-    +'<button class="btn btn-navy" id="btnExport">보고서 내보내기</button>'
+    +'<button class="btn '+(em?'btn-gold':'btn-ghost')+'" id="btnEdit">'+(em?'✅ 편집 완료':'✏️ 직접 수정')+'</button>'
+    +'<button class="btn btn-navy" id="btnExport">보고서 내보내기 (HTML)</button>'
+    +'<button class="btn btn-ghost" id="btnDocx">📝 Word 저장</button>'
+    +'<button class="btn btn-ghost" id="btnPptx">📊 PPT 저장</button>'
     +'<button class="btn btn-ghost" id="btnReset">새 분석 시작</button>'
     +'</div></div>'
+    +editNotice
     +'<div class="sgrid">'
     +[['총 문항',r.total_questions||qs.length],['평균 난이도',avgD],['고난도 문항',hiD+'개'],['고변형 문항',hiM+'개']].map(function(m){
       return '<div class="scard"><div class="v">'+m[1]+'</div><div class="l">'+m[0]+'</div></div>';
@@ -548,16 +661,206 @@ function step4Html(){
     +'</div>'
     +'<div class="sectit">문항별 분석</div>'
     +'<div class="tblwrap"><table>'
-    +'<thead><tr><th style="width:5%;text-align:center">번호</th><th style="width:12%">유형</th><th style="width:18%">원본 지문</th><th style="width:15%">난이도</th><th style="width:17%">변형도</th><th>출제 포인트</th></tr></thead>'
+    +'<thead><tr><th style="width:5%;text-align:center">번호</th><th style="width:13%">유형</th><th style="width:18%">원본 지문</th><th style="width:14%">난이도</th><th style="width:16%">변형도</th><th>출제 포인트</th></tr></thead>'
     +'<tbody>'+rows+'</tbody></table></div>'
     +'<div class="sectit" style="margin-top:8px">주요 문항 분석</div>'
     +(hls||'<p style="color:#8a8680;font-size:13px;padding-bottom:16px">해당 없음</p>')
     +'<div class="sectit" style="margin-top:20px">종합 총평</div>'
-    +'<div class="sumbox"><p>'+esc(r.summary||'—')+'</p></div>'
+    +summarySection
     +'</div>';
 }
 
-// ── EXPORT REPORT ─────────────────────────────
+// ── EXPORT DOCX ──────────────────────────────
+async function exportDocx(){
+  if(!window.docx){ alert('docx 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return; }
+  var r=S.result, qs=r.questions||[], inf=S.info;
+  var D=window.docx;
+  var navy='0E1F3D', gold='C9933A', gray='8A8680', lightgray='F8F7F4', border={style:D.BorderStyle.SINGLE,size:4,color:'E0DDD6'};
+  var borders={top:border,bottom:border,left:border,right:border};
+
+  function cell(txt,opts){
+    opts=opts||{};
+    return new D.TableCell({
+      borders:borders,
+      shading:opts.fill?{fill:opts.fill,type:D.ShadingType.SOLID,color:opts.fill}:undefined,
+      children:[new D.Paragraph({
+        alignment:opts.center?D.AlignmentType.CENTER:D.AlignmentType.LEFT,
+        children:[new D.TextRun({text:String(txt||'—'),bold:!!opts.bold,color:opts.color||'1a1a1a',size:opts.size||18,font:'Noto Sans KR'})]
+      })]
+    });
+  }
+
+  // 문항 테이블
+  var hdrCells=['번호','유형','원본 지문','난이도','변형도','출제 포인트'].map(function(t){
+    return cell(t,{fill:navy,color:'FFFFFF',bold:true,center:true,size:18});
+  });
+  var dataRows=qs.map(function(q){
+    return new D.TableRow({children:[
+      cell(q.no,{center:true}),
+      cell(q.type||''),
+      cell(q.source||'—'),
+      cell('★'.repeat(q.difficulty||0)+'☆'.repeat(5-(q.difficulty||0)),{center:true}),
+      cell((q.mod_level||'')+' '+q.mod_pct+'%'),
+      cell(q.notable||'—')
+    ]});
+  });
+  var qTable=new D.Table({
+    width:{size:100,type:D.WidthType.PERCENTAGE},
+    columnWidths:[900,1400,2000,1200,1400,3100],
+    rows:[new D.TableRow({children:hdrCells})].concat(dataRows)
+  });
+
+  // 하이라이트 단락들
+  var hlParas=[];
+  (r.highlights||[]).forEach(function(h){
+    var q=qs.find(function(x){return x.no===h.no;});
+    hlParas.push(new D.Paragraph({
+      spacing:{before:200,after:80},
+      children:[
+        new D.TextRun({text:h.no+'번  ',bold:true,size:22,font:'DM Mono',color:navy}),
+        new D.TextRun({text:(q?'['+q.type+']  ':''),size:18,color:gray,font:'Noto Sans KR'}),
+        new D.TextRun({text:(h.tags||[]).join(' · ')+'  ',size:18,color:'B03020',bold:true,font:'Noto Sans KR'})
+      ]
+    }));
+    hlParas.push(new D.Paragraph({
+      spacing:{before:0,after:200},
+      children:[new D.TextRun({text:h.comment||'',size:18,font:'Noto Sans KR',color:'4A4844'})]
+    }));
+  });
+
+  var doc=new D.Document({
+    styles:{default:{document:{run:{font:'Noto Sans KR',size:20}}}},
+    sections:[{
+      properties:{page:{margin:{top:900,bottom:900,left:1100,right:1100}}},
+      children:[
+        new D.Paragraph({heading:D.HeadingLevel.HEADING_1,spacing:{after:120},children:[
+          new D.TextRun({text:inf.school+' 내신 분석 리포트',bold:true,size:36,color:navy,font:'Noto Sans KR'})
+        ]}),
+        new D.Paragraph({spacing:{after:400},children:[
+          new D.TextRun({text:inf.year+'년 · '+inf.grade+'학년 · '+inf.semester+' '+inf.exam+' · 총 '+(r.total_questions||qs.length)+'문항',size:20,color:gray,font:'Noto Sans KR'})
+        ]}),
+        new D.Paragraph({heading:D.HeadingLevel.HEADING_2,spacing:{before:300,after:160},children:[
+          new D.TextRun({text:'문항별 분석',bold:true,size:24,color:navy,font:'Noto Sans KR'})
+        ]}),
+        qTable,
+        new D.Paragraph({heading:D.HeadingLevel.HEADING_2,spacing:{before:500,after:200},children:[
+          new D.TextRun({text:'주요 문항 분석',bold:true,size:24,color:navy,font:'Noto Sans KR'})
+        ]})
+      ].concat(hlParas).concat([
+        new D.Paragraph({heading:D.HeadingLevel.HEADING_2,spacing:{before:400,after:160},children:[
+          new D.TextRun({text:'종합 총평',bold:true,size:24,color:navy,font:'Noto Sans KR'})
+        ]}),
+        new D.Paragraph({spacing:{after:0},children:[
+          new D.TextRun({text:r.summary||'',size:20,font:'Noto Sans KR',color:'4A4844'})
+        ]}),
+        new D.Paragraph({spacing:{before:600},children:[
+          new D.TextRun({text:'Generated by KKJ ENGLISH 내신시험 분석기 · '+new Date().toLocaleDateString('ko-KR'),size:16,color:'BBBBBB',font:'Noto Sans KR'})
+        ]})
+      ])
+    }]
+  });
+
+  var blob=await D.Packer.toBlob(doc);
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a'); a.href=url; a.download=inf.school+'_내신분석.docx'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── EXPORT PPTX ──────────────────────────────
+function exportPptx(){
+  if(typeof PptxGenJS==='undefined'){ alert('PptxGenJS 라이브러리 로딩 중입니다. 잠시 후 다시 시도해주세요.'); return; }
+  var r=S.result, qs=r.questions||[], inf=S.info;
+  var pptx=new PptxGenJS();
+  pptx.layout='LAYOUT_WIDE';
+  pptx.author='KKJ ENGLISH';
+  pptx.title=inf.school+' 내신 분석 리포트';
+
+  var NAVY='0E1F3D', GOLD='C9933A', LGRAY='F8F7F4', GRAY='8A8680';
+
+  // ── 슬라이드 1: 표지
+  var s1=pptx.addSlide();
+  s1.background={color:NAVY};
+  s1.addShape(pptx.ShapeType.rect,{x:0,y:3.6,w:13.33,h:0.06,fill:{color:GOLD}});
+  s1.addText(inf.school,[{text:inf.school,options:{}}],{x:0.8,y:1.0,w:11.5,h:1.2,fontSize:36,bold:true,color:'FFFFFF',fontFace:'Noto Sans KR'});
+  s1.addText(inf.year+'년 · '+inf.grade+'학년 · '+inf.semester+' '+inf.exam,{x:0.8,y:2.3,w:11.5,h:0.6,fontSize:20,color:'E8B96A',fontFace:'Noto Sans KR'});
+  s1.addText('내신시험 분석 리포트',{x:0.8,y:2.95,w:11.5,h:0.5,fontSize:14,color:'AAAAAA',fontFace:'Noto Sans KR'});
+  s1.addText('KKJ ENGLISH',{x:0.8,y:4.2,w:11.5,h:0.4,fontSize:12,color:'666666',fontFace:'Noto Sans KR'});
+
+  // ── 슬라이드 2: 분석 요약
+  var avgD=qs.length?(qs.reduce(function(s,q){return s+q.difficulty;},0)/qs.length).toFixed(1):'—';
+  var hiD=qs.filter(function(q){return q.difficulty>=4;}).length;
+  var hiM=qs.filter(function(q){return q.mod_pct>=50;}).length;
+  var s2=pptx.addSlide();
+  s2.addShape(pptx.ShapeType.rect,{x:0,y:0,w:13.33,h:0.7,fill:{color:NAVY}});
+  s2.addText('분석 요약',{x:0.4,y:0.1,w:12,h:0.5,fontSize:16,bold:true,color:'FFFFFF',fontFace:'Noto Sans KR'});
+  [[r.total_questions||qs.length,'총 문항'],[avgD,'평균 난이도'],[hiD+'개','고난도 문항'],[hiM+'개','고변형 문항']].forEach(function(m,i){
+    var x=0.4+i*3.1;
+    s2.addShape(pptx.ShapeType.rect,{x:x,y:0.9,w:2.8,h:1.5,fill:{color:LGRAY},line:{color:'E0DDD6',pt:1}});
+    s2.addText(String(m[0]),{x:x,y:1.0,w:2.8,h:0.8,fontSize:28,bold:true,color:NAVY,align:'center',fontFace:'DM Mono'});
+    s2.addText(m[1],{x:x,y:1.8,w:2.8,h:0.4,fontSize:11,color:GRAY,align:'center',fontFace:'Noto Sans KR'});
+  });
+
+  // ── 슬라이드 3+: 문항별 분석 (15문항씩)
+  var PAGE=15;
+  for(var p=0;p<Math.ceil(qs.length/PAGE);p++){
+    var chunk=qs.slice(p*PAGE,(p+1)*PAGE);
+    var s=pptx.addSlide();
+    s.addShape(pptx.ShapeType.rect,{x:0,y:0,w:13.33,h:0.7,fill:{color:NAVY}});
+    s.addText('문항별 분석'+(Math.ceil(qs.length/PAGE)>1?' ('+(p+1)+'/'+ Math.ceil(qs.length/PAGE)+')':''),{x:0.4,y:0.1,w:12,h:0.5,fontSize:16,bold:true,color:'FFFFFF',fontFace:'Noto Sans KR'});
+    var rows=[[
+      {text:'번호',options:{bold:true,fill:NAVY,color:'FFFFFF',align:'center',fontFace:'Noto Sans KR',fontSize:10}},
+      {text:'유형',options:{bold:true,fill:NAVY,color:'FFFFFF',fontFace:'Noto Sans KR',fontSize:10}},
+      {text:'원본 지문',options:{bold:true,fill:NAVY,color:'FFFFFF',fontFace:'Noto Sans KR',fontSize:10}},
+      {text:'난이도',options:{bold:true,fill:NAVY,color:'FFFFFF',align:'center',fontFace:'Noto Sans KR',fontSize:10}},
+      {text:'변형도',options:{bold:true,fill:NAVY,color:'FFFFFF',fontFace:'Noto Sans KR',fontSize:10}},
+      {text:'출제 포인트',options:{bold:true,fill:NAVY,color:'FFFFFF',fontFace:'Noto Sans KR',fontSize:10}}
+    ]].concat(chunk.map(function(q,ri){
+      var bg=ri%2===0?'FFFFFF':'F8F7F4';
+      var opt=function(extra){ return Object.assign({fill:bg,fontFace:'Noto Sans KR',fontSize:9,valign:'middle'},extra||{}); };
+      return [
+        {text:String(q.no),options:opt({align:'center',bold:true})},
+        {text:q.type||'',options:opt()},
+        {text:q.source||'—',options:opt({color:'555555'})},
+        {text:'★'.repeat(q.difficulty||0),options:opt({align:'center',color:'C97316'})},
+        {text:(q.mod_level||'')+' '+q.mod_pct+'%',options:opt()},
+        {text:q.notable||'—',options:opt({color:'4A4844'})}
+      ];
+    }));
+    s.addTable(rows,{x:0.3,y:0.85,w:12.7,colW:[0.55,1.0,1.7,0.8,1.15,7.5],border:{type:'solid',pt:0.5,color:'E0DDD6'},rowH:0.28});
+  }
+
+  // ── 슬라이드 4+: 주요 문항 분석 (3개씩)
+  var hls=r.highlights||[];
+  var HPAGE=3;
+  for(var hp=0;hp<Math.ceil(hls.length/HPAGE);hp++){
+    var hchunk=hls.slice(hp*HPAGE,(hp+1)*HPAGE);
+    var hs=pptx.addSlide();
+    hs.addShape(pptx.ShapeType.rect,{x:0,y:0,w:13.33,h:0.7,fill:{color:NAVY}});
+    hs.addText('주요 문항 분석'+(Math.ceil(hls.length/HPAGE)>1?' ('+(hp+1)+'/'+Math.ceil(hls.length/HPAGE)+')':''),{x:0.4,y:0.1,w:12,h:0.5,fontSize:16,bold:true,color:'FFFFFF',fontFace:'Noto Sans KR'});
+    hchunk.forEach(function(h,hi){
+      var q=qs.find(function(x){return x.no===h.no;});
+      var y=0.85+hi*1.55;
+      var bc=h.tags&&h.tags.includes('고난도')?'B03020':GOLD;
+      hs.addShape(pptx.ShapeType.rect,{x:0.3,y:y,w:12.7,h:1.4,fill:{color:'FFFFFF'},line:{color:'E0DDD6',pt:1}});
+      hs.addShape(pptx.ShapeType.rect,{x:0.3,y:y,w:0.06,h:1.4,fill:{color:bc}});
+      hs.addText(h.no+'번',{x:0.5,y:y+0.08,w:0.7,h:0.35,fontSize:14,bold:true,color:NAVY,fontFace:'DM Mono'});
+      var tagTxt=(q?'['+q.type+']  ':'')+' '+(h.tags||[]).join(' · ');
+      hs.addText(tagTxt,{x:1.25,y:y+0.1,w:11,h:0.3,fontSize:10,color:'B03020',bold:true,fontFace:'Noto Sans KR'});
+      hs.addText(h.comment||'',{x:0.5,y:y+0.48,w:12.2,h:0.85,fontSize:10,color:'4A4844',fontFace:'Noto Sans KR',valign:'top'});
+    });
+  }
+
+  // ── 마지막 슬라이드: 종합 총평
+  var ss=pptx.addSlide();
+  ss.addShape(pptx.ShapeType.rect,{x:0,y:0,w:13.33,h:0.7,fill:{color:NAVY}});
+  ss.addText('종합 총평',{x:0.4,y:0.1,w:12,h:0.5,fontSize:16,bold:true,color:'FFFFFF',fontFace:'Noto Sans KR'});
+  ss.addShape(pptx.ShapeType.rect,{x:0.3,y:0.85,w:12.7,h:4.2,fill:{color:'FDF6E8'},line:{color:'E8D5A0',pt:1}});
+  ss.addText(r.summary||'',{x:0.6,y:1.0,w:12.1,h:3.9,fontSize:13,color:'4A4844',fontFace:'Noto Sans KR',valign:'top'});
+
+  pptx.writeFile({fileName:inf.school+'_내신분석.pptx'});
+}
+
+
 function exportReport(){
   var r=S.result, qs=r.questions||[];
   var avgD=qs.length?(qs.reduce(function(s,q){return s+q.difficulty;},0)/qs.length).toFixed(1):'—';
@@ -620,10 +923,98 @@ function exportReport(){
 // ── RESET ────────────────────────────────────
 function resetAll(){
   S = { step:1, apiKey:localStorage.getItem('kkj_key')||'', info:{school:'',grade:'1',semester:'1학기',exam:'1차 지필고사',year:String(new Date().getFullYear())}, examFiles:[], pdfFiles:[], memo:'', result:null, loading:false, error:'' };
+  localStorage.removeItem('kkj_meta');
+  dbSet('examFiles',[]).catch(function(){});
+  dbSet('pdfFiles',[]).catch(function(){});
   render();
 }
 
-// ── MAIN RENDER ──────────────────────────────
+// ── PERSISTENCE (IndexedDB for files, localStorage for meta) ──
+var DB_NAME = 'examAnalyzer_v1';
+
+function dbOpen(){
+  return new Promise(function(res,rej){
+    var req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = function(e){
+      e.target.result.createObjectStore('store');
+    };
+    req.onsuccess = function(e){ res(e.target.result); };
+    req.onerror = rej;
+  });
+}
+function dbSet(key, val){
+  return dbOpen().then(function(db){
+    return new Promise(function(res,rej){
+      var tx = db.transaction('store','readwrite');
+      tx.objectStore('store').put(val, key);
+      tx.oncomplete = res; tx.onerror = rej;
+    });
+  });
+}
+function dbGet(key){
+  return dbOpen().then(function(db){
+    return new Promise(function(res,rej){
+      var tx = db.transaction('store','readonly');
+      var req = tx.objectStore('store').get(key);
+      req.onsuccess = function(){ res(req.result); };
+      req.onerror = rej;
+    });
+  });
+}
+
+// base64 → ObjectURL (preview 재생성용)
+function b64ToUrl(b64, mime){
+  var bin = atob(b64), arr = new Uint8Array(bin.length);
+  for(var i=0;i<bin.length;i++) arr[i]=bin.charCodeAt(i);
+  return URL.createObjectURL(new Blob([arr],{type:mime}));
+}
+
+var EXPIRE_MS = 7 * 24 * 60 * 60 * 1000; // 7일
+
+function saveState(){
+  localStorage.setItem('kkj_meta', JSON.stringify({
+    step: S.step < 4 ? S.step : 4,
+    info: S.info,
+    memo: S.memo,
+    savedAt: Date.now()
+  }));
+  var examData = S.examFiles.map(function(f){ return { name:f.name, base64:f.base64, mime:f.mime }; });
+  var pdfData  = S.pdfFiles.map(function(f){ return { name:f.name, base64:f.base64, size:f.size }; });
+  dbSet('examFiles', examData).catch(function(){});
+  dbSet('pdfFiles',  pdfData).catch(function(){});
+  if(S.result) dbSet('result', S.result).catch(function(){});
+}
+
+async function loadState(){
+  try{
+    // 메타 복원
+    var meta = JSON.parse(localStorage.getItem('kkj_meta')||'null');
+    if(meta && Date.now() - meta.savedAt < EXPIRE_MS){
+      S.info = meta.info || S.info;
+      S.memo = meta.memo || '';
+      S.step = meta.step || 1;
+    }
+    // 파일 복원
+    var examData = await dbGet('examFiles');
+    var pdfData  = await dbGet('pdfFiles');
+    var resultData = await dbGet('result');
+    if(examData && examData.length){
+      S.examFiles = examData.map(function(f){
+        return { name:f.name, base64:f.base64, mime:f.mime, preview:b64ToUrl(f.base64, f.mime) };
+      });
+    }
+    if(pdfData && pdfData.length){
+      S.pdfFiles = pdfData.map(function(f){
+        return { name:f.name, base64:f.base64, size:f.size };
+      });
+    }
+    if(resultData) S.result = resultData;
+  }catch(e){ console.warn('loadState 오류:', e); }
+  render();
+  if(!S.apiKey) setTimeout(openApi, 600);
+}
+
+
 function render(){
   renderStepBar();
   updateStatus();
@@ -633,8 +1024,7 @@ function render(){
 }
 
 // ── INIT ─────────────────────────────────────
-render();
-if(!S.apiKey) setTimeout(openApi, 600);
+loadState();  // 저장된 상태 복원 후 render() 호출
 </script>
 </body>
 </html>
