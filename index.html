@@ -516,7 +516,8 @@ var SYS = '당신은 한국 고등학교 영어 내신시험 전문 분석가입
   +'  80% = 내용은 유사하나 거의 새로운 문장으로 재작성\n'
   +'  100% = 원본과 완전히 다른 문장으로 대체\n'
   +'mod_level: 원문동일(0~15%) / 소변형(16~40%) / 중변형(41~65%) / 고변형(66~100%)\n'
-  +'highlights: mod_pct > 0인 문항은 무조건 포함. 추가로 difficulty=5인 문항도 포함. 중복이면 하나만. 최소 3개 이상';
+  +'highlights: mod_pct > 0인 문항은 무조건 포함. 추가로 difficulty=5인 문항도 포함. 중복이면 하나만. 최소 3개 이상. no 기준 오름차순 정렬.\n'
+  +'[중요] 요약문빈칸·요약문완성 유형의 original_excerpt/exam_excerpt: Summary 문장(요약문, 빈칸 있는 한 줄짜리 문장)은 절대 포함 금지. 오직 그 위의 본문 passage 문장만 사용할 것. 요약문을 포함하면 틀린 응답임.';
 
 async function runAnalysis(){
   if(!S.apiKey){ alert('API 키를 먼저 설정해주세요.'); return; }
@@ -580,7 +581,11 @@ function toggleTag(hi, tag){
   saveState(); render();
 }
 function updateSummary(val){ if(S.result){ S.result.summary=val; saveState(); } }
-function toggleEdit(){ S.editMode=!S.editMode; render(); }
+function deleteHighlight(hi){
+  if(!S.result||!S.result.highlights) return;
+  S.result.highlights.splice(hi,1);
+  saveState(); render();
+}
 
 // ── STEP 4 ───────────────────────────────────
 function step4Html(){
@@ -626,7 +631,7 @@ function step4Html(){
       +'</tr>';
   }).join('');
 
-  var hls = (r.highlights||[]).map(function(h,hi){
+  var hls = (r.highlights||[]).slice().sort(function(a,b){ return a.no-b.no; }).map(function(h,hi){
     var q = qs.find(function(x){return x.no===h.no;});
     var cls = h.tags&&h.tags.includes('고난도') ? 'red' : 'amber';
     var tags = h.tags||[];
@@ -647,7 +652,8 @@ function step4Html(){
           +'</div>'
           +'</div>';
       }
-      return '<div class="hlcard '+cls+'">'
+      return '<div class="hlcard '+cls+'" style="position:relative">'
+        +'<button onclick="deleteHighlight('+hi+')" style="position:absolute;top:10px;right:10px;background:transparent;border:1px solid #e0ddd6;border-radius:50%;width:22px;height:22px;font-size:12px;color:#8a8680;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0" onmouseover="this.style.background=\'#fdf0ee\';this.style.color=\'#b03020\';this.style.borderColor=\'#f0c0b8\'" onmouseout="this.style.background=\'transparent\';this.style.color=\'#8a8680\';this.style.borderColor=\'#e0ddd6\'">✕</button>'
         +'<div class="hlhd"><span class="hlno">'+h.no+'번</span>'
         +(q?typePill(q.type):'')+' '
         +tags.map(tagBadge).join('')
@@ -661,7 +667,8 @@ function step4Html(){
       var on = tags.includes(t);
       return '<span data-hi="'+hi+'" data-tag="'+t+'" class="etag" style="cursor:pointer;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid '+(on?'transparent':'#c8c4ba')+';background:'+(on?({'고난도':'#fdf0ee','고변형':'#fef8ed','함정':'#e8ecf5'}[t]):'')+';color:'+(on?({'고난도':'#b03020','고변형':'#a06010','함정':'#1a3360'}[t]):'#8a8680')+';margin-right:4px">'+t+'</span>';
     }).join('');
-    return '<div class="hlcard" style="background:#fffef5">'
+    return '<div class="hlcard" style="background:#fffef5;position:relative">'
+      +'<button onclick="deleteHighlight('+hi+')" style="position:absolute;top:10px;right:10px;background:transparent;border:1px solid #e0ddd6;border-radius:50%;width:22px;height:22px;font-size:12px;color:#8a8680;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;padding:0" onmouseover="this.style.background=\'#fdf0ee\';this.style.color=\'#b03020\'" onmouseout="this.style.background=\'transparent\';this.style.color=\'#8a8680\'">✕</button>'
       +'<div class="hlhd"><span class="hlno">'+h.no+'번</span>'
       +(q?typePill(q.type):'')+' '
       +tagToggles
