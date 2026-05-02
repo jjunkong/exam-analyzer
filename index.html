@@ -122,6 +122,7 @@ tbody tr:hover td{background:#f8f7f4}
   <div class="hdr-right">
     <span class="dot off" id="sDot"></span>
     <span id="sTxt">API 키 없음</span>
+    <button class="api-btn" id="histBtn">📋 분석 기록</button>
     <button class="api-btn" id="apiBtn">API 키 설정</button>
   </div>
 </div>
@@ -139,7 +140,15 @@ tbody tr:hover td{background:#f8f7f4}
   </div>
 </div>
 
-<div class="main">
+<div class="overlay" id="histModal" style="display:none" onclick="if(event.target===this)closeHist()">
+  <div class="modal" style="width:560px;max-height:80vh;display:flex;flex-direction:column">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h2 style="margin:0">📋 분석 기록</h2>
+      <button class="btn btn-ghost" style="padding:4px 12px;font-size:13px" onclick="closeHist()">✕</button>
+    </div>
+    <div id="histList" style="overflow-y:auto;flex:1;min-height:0"></div>
+  </div>
+</div>
   <div class="stepbar" id="stepBar"></div>
   <div id="app"></div>
 </div>
@@ -165,6 +174,7 @@ var S = {
 
 // ── API MODAL ──────────────────────────────
 document.getElementById('apiBtn').onclick = openApi;
+document.getElementById('histBtn').onclick = openHist;
 document.getElementById('logoHome').onclick = function(){ S.step=1; render(); };
 document.getElementById('apiCancel').onclick = closeApi;
 document.getElementById('apiSave').onclick = saveApi;
@@ -491,8 +501,8 @@ var SYS = '당신은 한국 고등학교 영어 내신시험 전문 분석가입
   +'      "no": number,\n'
   +'      "tags": ["고난도","고변형","함정" 중 해당],\n'
   +'      "comment": "2~4문장. 변형이 있는 경우 어떤 어휘·구조가 어떻게 바뀌었는지 구체적으로 서술 (예: 원문의 특정 표현이 어떤 개념으로 대체되었는지, 문장 구조가 어떻게 재구성되었는지 등)",\n'
-  +'      "original_excerpt": "변형이 있을 때만(mod_pct > 0) 작성. exam_excerpt가 파생된 바로 그 원본 문장을 인용할 것. 주제가 비슷하거나 앞뒤에 있는 다른 문장이 아니라, exam_excerpt의 어휘·구조·내용이 실제로 변형되기 전의 원문 문장이어야 함. 확인 방법: original_excerpt의 핵심 단어나 구조가 exam_excerpt에 어떤 식으로 바뀌었는지 추적 가능해야 함. 요약문빈칸·요약문완성 유형은 Summary/요약문 제외하고 본문만. 대응 원문을 찾을 수 없으면 null.",\n'
-  +'      "exam_excerpt": "변형이 있을 때만(mod_pct > 0) 작성. 시험지에 실제 출제된 문장을 그대로 인용 — original_excerpt와 1:1 직접 대응. 빈칸은 _____ 로 표기. 요약문빈칸·요약문완성 유형은 Summary/요약문 제외하고 본문만. original_excerpt와 실제로 동일한 텍스트라면 null."\n'
+  +'      "original_excerpt": "변형이 있을 때만(mod_pct > 0) 작성. exam_excerpt가 파생된 바로 그 원본 문장을 인용할 것. 주제가 비슷하거나 앞뒤에 있는 다른 문장이 아니라, exam_excerpt의 어휘·구조·내용이 실제로 변형되기 전의 원문 문장이어야 함. 확인 방법: original_excerpt의 핵심 단어나 구조가 exam_excerpt에 어떤 식으로 바뀌었는지 추적 가능해야 함. 길이 제한: 2문장 이내로 간결하게. 불필요한 앞뒤 문장은 제거하고, 중간에 변형과 무관한 부분이 있으면 (중략)으로 생략. 요약문빈칸·요약문완성 유형은 Summary/요약문 제외하고 본문만. 대응 원문을 찾을 수 없으면 null.",\n'
+  +'      "exam_excerpt": "변형이 있을 때만(mod_pct > 0) 작성. 시험지에 실제 출제된 문장을 그대로 인용 — original_excerpt와 1:1 직접 대응. 빈칸은 _____ 로 표기. 길이 제한: 2문장 이내로 간결하게. 중간에 변형과 무관한 부분이 있으면 (중략)으로 생략. 요약문빈칸·요약문완성 유형은 Summary/요약문 제외하고 본문만. original_excerpt와 실제로 동일한 텍스트라면 null."\n'
   +'    }\n'
   +'  ],\n'
   +'  "summary": "총평 3~5문장. 반드시 첫 문장에 출처별 문항 수를 구체적으로 명시할 것. 예: \'교과서 1과 3문항, 2과 4문항, 3과 2문항, 26년 3월 모의 2문항, 부교재 리딩파워 1강 3문항으로 구성되었다.\' 처럼 각 출처를 개별적으로 분리하여 숫자로 표기. 이후 문장에서 난이도 분포(고난도 몇 문항), 변형 출제 경향, 주요 출제 포인트를 서술."\n'
@@ -530,6 +540,7 @@ async function runAnalysis(){
     var txt = (data.content||[]).map(function(b){ return b.text||''; }).join('');
     S.result = JSON.parse(txt.replace(/```json|```/g,'').trim());
     S.step=4;
+    saveHistory(); // 분석 기록 저장
   } catch(e){
     S.error = '분석 오류: '+e.message;
   } finally {
@@ -983,7 +994,80 @@ function resetAll(){
   render();
 }
 
-// ── PERSISTENCE (IndexedDB for files, localStorage for meta) ──
+// ── HISTORY ──────────────────────────────────
+var MAX_HIST = 20;
+
+async function saveHistory(){
+  if(!S.result || !S.info.school) return;
+  try{
+    var list = (await dbGet('history')) || [];
+    var entry = {
+      id: Date.now(),
+      info: S.info,
+      result: S.result,
+      examCount: S.examFiles.length,
+      pdfCount: S.pdfFiles.length,
+      savedAt: Date.now()
+    };
+    list.unshift(entry);
+    if(list.length > MAX_HIST) list = list.slice(0, MAX_HIST);
+    await dbSet('history', list);
+  }catch(e){ console.warn('history save error', e); }
+}
+
+async function openHist(){
+  document.getElementById('histModal').style.display='flex';
+  var list;
+  try{ list = (await dbGet('history')) || []; } catch(e){ list=[]; }
+  var el = document.getElementById('histList');
+  if(!list.length){
+    el.innerHTML='<p style="color:#8a8680;font-size:13px;padding:20px 0;text-align:center">저장된 분석 기록이 없습니다.</p>';
+    return;
+  }
+  el.innerHTML = list.map(function(e){
+    var d = new Date(e.savedAt);
+    var dateStr = d.getFullYear()+'.'+(d.getMonth()+1).toString().padStart(2,'0')+'.'+d.getDate().toString().padStart(2,'0')+' '+d.getHours().toString().padStart(2,'0')+':'+d.getMinutes().toString().padStart(2,'0');
+    var qs = (e.result.questions||[]).length;
+    return '<div style="border:1px solid #e0ddd6;border-radius:10px;padding:14px 16px;margin-bottom:10px;background:#fff;cursor:pointer;transition:background .15s" '
+      +'onmouseover="this.style.background=\'#f8f7f4\'" onmouseout="this.style.background=\'#fff\'">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+      +'<div onclick="loadHist('+e.id+')" style="flex:1">'
+      +'<div style="font-size:15px;font-weight:500;color:#0e1f3d;margin-bottom:4px">'+esc(e.info.school)+'</div>'
+      +'<div style="font-size:12px;color:#8a8680">'+e.info.year+'년 · '+e.info.grade+'학년 · '+e.info.semester+' '+e.info.exam+'</div>'
+      +'<div style="font-size:11px;color:#aaa;margin-top:4px">'+dateStr+' · '+qs+'문항 · 시험지 '+e.examCount+'p · PDF '+e.pdfCount+'개</div>'
+      +'</div>'
+      +'<button onclick="deleteHist('+e.id+')" style="background:transparent;border:1px solid #e0ddd6;border-radius:6px;padding:4px 10px;font-size:12px;color:#8a8680;cursor:pointer;flex-shrink:0" onmouseover="this.style.background=\'#fdf0ee\';this.style.color=\'#b03020\'" onmouseout="this.style.background=\'transparent\';this.style.color=\'#8a8680\'">삭제</button>'
+      +'</div>'
+      +'</div>';
+  }).join('');
+}
+
+function closeHist(){ document.getElementById('histModal').style.display='none'; }
+
+async function loadHist(id){
+  try{
+    var list = (await dbGet('history')) || [];
+    var entry = list.find(function(e){ return e.id===id; });
+    if(!entry) return;
+    S.info = entry.info;
+    S.result = entry.result;
+    S.step = 4;
+    closeHist();
+    render();
+    saveState();
+  }catch(e){ alert('불러오기 실패: '+e.message); }
+}
+
+async function deleteHist(id){
+  try{
+    var list = (await dbGet('history')) || [];
+    list = list.filter(function(e){ return e.id!==id; });
+    await dbSet('history', list);
+    openHist(); // refresh
+  }catch(e){}
+}
+
+
 var DB_NAME = 'examAnalyzer_v1';
 
 function dbOpen(){
