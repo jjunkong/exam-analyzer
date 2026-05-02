@@ -119,7 +119,7 @@ tbody tr:hover td{background:#f8f7f4}
 <body>
 
 <div class="hdr">
-  <div class="hdr-logo">KKJ <span>ENGLISH</span></div>
+  <div class="hdr-logo" style="cursor:pointer" id="logoHome">KKJ <span>ENGLISH</span></div>
   <div class="hdr-ttl">내신시험 분석기</div>
   <div class="hdr-right">
     <span class="dot off" id="sDot"></span>
@@ -167,6 +167,7 @@ var S = {
 
 // ── API MODAL ──────────────────────────────
 document.getElementById('apiBtn').onclick = openApi;
+document.getElementById('logoHome').onclick = function(){ S.step=1; render(); };
 document.getElementById('apiCancel').onclick = closeApi;
 document.getElementById('apiSave').onclick = saveApi;
 document.getElementById('apiModal').onclick = function(e){ if(e.target===this) closeApi(); };
